@@ -50,9 +50,9 @@ async function criarModulo({
   }
 }
 
-async function listarModulosPaginados(pagina = 1) {
+async function listarModulosPaginados(pagina = 1, quantidadeItens = 3) {
   try {
-    const limit = 3
+    const limit = quantidadeItens
     const offset = (pagina - 1) * limit
     const modulos = await Modulo.findAll({ offset, limit });
     return modulos;
@@ -62,9 +62,9 @@ async function listarModulosPaginados(pagina = 1) {
   }
 }
 
-async function infoPaginacaoModulos() {
+async function infoPaginacaoModulos(quantidadeItens) {
   try {
-    const limit = 3;
+    const limit = quantidadeItens;
     const totalRegistros = await Modulo.count();
     const totalPaginas = Math.ceil(totalRegistros / limit);
     

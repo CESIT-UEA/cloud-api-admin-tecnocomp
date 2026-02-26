@@ -90,10 +90,12 @@ router.get(
   async (req, res) => {
     try {
       let page = parseInt(req.query.page)
+      let quantidadeItens = parseInt(req.query.quantidadeItens)
       if (isNaN(page) || page < 1) page = 1;
+      if (isNaN(quantidadeItens) || quantidadeItens < 0) quantidadeItens = 3
 
-      const modulos = await moduloService.listarModulosPaginados(page);
-      const infoModulos = await moduloService.infoPaginacaoModulos();
+      const modulos = await moduloService.listarModulosPaginados(page, quantidadeItens);
+      const infoModulos = await moduloService.infoPaginacaoModulos(quantidadeItens);
       
       res.status(200).json({modulos, infoModulos });
     } catch (error) {

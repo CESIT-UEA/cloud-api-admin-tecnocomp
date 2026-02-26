@@ -37,7 +37,7 @@ async function criarPlataforma({
 
 async function listarPlataformasPaginadas(pagina = 1) {
   try {
-    const limit = 3
+    const limit = 2
     const offset = (pagina - 1) * limit
     const plataformas = await PlataformaRegistro.findAll({ offset, limit });
     return plataformas;
@@ -59,7 +59,7 @@ async function obterPlataformaPorId(id) {
 
 async function obterPlataformasPaginadasPorUsuario(usuarioId, pagina = 1) {
   try {
-    const limit = 3; 
+    const limit = 2; 
     const offset = (pagina - 1) * limit
     const plataformas = await PlataformaRegistro.findAll({
       where: { usuario_id: usuarioId },
