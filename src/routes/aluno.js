@@ -38,13 +38,20 @@ const authorizeRole = require('../middleware/authorizeRole');
  */
 router.get('/alunos', authMiddleware, authorizeRole(['adm', 'professor']), async (req, res) => {
   try {
+    let page = parseInt(req.query.page)
+    if (isNaN(page) || page < 1) page = 1;
+    console.log(page)
     const filtros = {
       nome: req.query.nome,
       email: req.query.email,
     };
 
-    const alunos = await alunoService.listarAlunos(filtros);
-    res.status(200).json(alunos);
+    const alunos = await alunoService.listarAlunos(filtros, page);
+    const infoAlunos = await alunoService.infoPaginacaoAlunos();
+
+    console.log(alunos)
+
+    res.status(200).json({alunos, infoAlunos});
   } catch (error) {
     res.status(400).json({ error: error.message });
   }

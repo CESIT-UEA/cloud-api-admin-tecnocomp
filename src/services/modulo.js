@@ -276,7 +276,7 @@ async function obterModuloPorIdESeusTopicos(id) {
   }
 }
 
-async function getProgressoAlunosPorModulo(idModulo, filtros = {}) {
+async function getProgressoAlunosPorModulo(idModulo, filtros = {}, page = 1, limit = 3) {
   try {
     const where = { id_modulo: idModulo };
 
@@ -302,7 +302,12 @@ async function getProgressoAlunosPorModulo(idModulo, filtros = {}) {
       alunoWhere.email = { [Op.like]: `%${filtros.email}%` };
     }
 
-    const alunosModulo = await UsuarioModulo.findAll({
+    // verifica se existe QUALQUER filtro
+    const temFiltro =
+      Object.keys(where).length > 1 || // > 1 porque id_modulo sempre existe
+      Object.keys(alunoWhere).length > 0;
+
+    const options = {
       where,
       include: [
         {
@@ -310,12 +315,70 @@ async function getProgressoAlunosPorModulo(idModulo, filtros = {}) {
           where: Object.keys(alunoWhere).length > 0 ? alunoWhere : undefined,
         },
       ],
-    });
+    };
+
+    // só pagina se NÃO tiver filtro
+    if (!temFiltro) {
+      options.limit = limit;
+      options.offset = (page - 1) * limit;
+    }
+
+    const alunosModulo = await UsuarioModulo.findAll(options);
 
     return alunosModulo;
   } catch (error) {
     console.error("Erro ao buscar progresso dos alunos por módulo:", error);
     throw new Error("Erro ao buscar progresso dos alunos por módulo");
+  }
+}
+
+
+async function infoPaginacaoAlunos(idModulo, filtros = {}) {
+  try {
+    const limit = 4;
+
+    const where = { id_modulo: idModulo };
+
+    if (filtros.ativo !== undefined) {
+      where.ativo = filtros.ativo;
+    }
+
+    if (filtros.progressoMin !== undefined) {
+      where.progresso = { [Op.gte]: parseFloat(filtros.progressoMin) };
+    }
+
+    if (filtros.notaMin !== undefined) {
+      where.nota = { [Op.gte]: parseFloat(filtros.notaMin) };
+    }
+
+    const alunoWhere = {};
+
+    if (filtros.nome) {
+      alunoWhere.nome = { [Op.like]: `%${filtros.nome}%` };
+    }
+
+    if (filtros.email) {
+      alunoWhere.email = { [Op.like]: `%${filtros.email}%` };
+    }
+
+    const totalRegistros = await UsuarioModulo.count({
+      where,
+      include: [
+        {
+          model: Aluno,
+          where: Object.keys(alunoWhere).length > 0 ? alunoWhere : undefined,
+          required: Object.keys(alunoWhere).length > 0, // INNER JOIN quando filtra
+        },
+      ],
+      distinct: true,
+    });
+
+    const totalPaginas = Math.ceil(totalRegistros / limit);
+
+    return { totalPaginas, totalRegistros };
+  } catch (error) {
+    console.error('Erro ao buscar informações de paginação', error);
+    throw new Error('Erro ao buscar informações de paginação');
   }
 }
 
@@ -345,5 +408,6 @@ module.exports = {
   getProgressoAlunosPorModulo,
   atualizarUsuarioModulo,
   infoPaginacaoModulos,
-  infoModulosPorUsuario
+  infoModulosPorUsuario,
+  infoPaginacaoAlunos
 };

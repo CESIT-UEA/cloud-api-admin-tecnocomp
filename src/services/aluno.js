@@ -1,6 +1,6 @@
 const { Aluno, UsuarioModulo, UsuarioTopico, UsuarioVideo, Modulo, Topico, VideoUrls } = require('../models');
 
-async function listarAlunos(filtros = {}) {
+async function listarAlunos(filtros = {}, page = 1, limit = 4) {
   try {
     const where = {};
 
@@ -12,7 +12,17 @@ async function listarAlunos(filtros = {}) {
       where.email = filtros.email;
     }
 
-    return await Aluno.findAll({ where });
+    const temFiltro = Object.keys(where).length > 0;
+
+    const options = { where };
+
+    if (!temFiltro) {
+      const offset = (page - 1) * limit;
+      options.limit = limit;
+      options.offset = offset;
+    }
+
+    return await Aluno.findAll(options);
   } catch (error) {
     console.error('Erro ao listar alunos:', error);
     throw new Error('Erro ao listar alunos');
@@ -25,6 +35,19 @@ async function getAlunoById(id_aluno) {
   } catch (error) {
     console.error('Erro ao buscar aluno:', error);
     throw new Error('Erro ao buscar aluno');
+  }
+}
+
+async function infoPaginacaoAlunos() {
+  try {
+    const limit = 4;
+    const totalRegistros = await Aluno.count();
+    const totalPaginas = Math.ceil(totalRegistros / limit);
+    
+    return { totalPaginas, totalRegistros }
+  } catch (error) {
+    console.error('Erro ao buscar informações dos aluno', error)
+    throw new Error('Erro ao buscar informações dos alunos')
   }
 }
 
@@ -111,5 +134,6 @@ module.exports = {
   getAlunoById,
   atualizarAluno,
   deletarAluno,
-  getProgressoAluno
+  getProgressoAluno,
+  infoPaginacaoAlunos
 };

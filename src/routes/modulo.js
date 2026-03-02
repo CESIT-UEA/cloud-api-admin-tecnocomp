@@ -467,6 +467,10 @@ router.get(
   authorizeRole(["adm", "professor"]),
   async (req, res) => {
     try {
+      let page = parseInt(req.query.page)
+      if (isNaN(page) || page < 1) page = 1;
+      console.log(page)
+
       const filtros = {
         nome: req.query.nome,
         email: req.query.email,
@@ -478,11 +482,13 @@ router.get(
         notaMin: req.query.notaMin,
       };
 
-      const alunosProgresso = await moduloService.getProgressoAlunosPorModulo(
+      const alunos= await moduloService.getProgressoAlunosPorModulo(
         req.params.id,
-        filtros
+        filtros,
+        page
       );
-      res.status(200).json(alunosProgresso);
+      const infoAlunos = await moduloService.infoPaginacaoAlunos(req.params.id)
+      res.status(200).json({ alunos, infoAlunos});
     } catch (error) {
       res.status(400).json({ error: error.message });
     }
