@@ -46,9 +46,9 @@ async function clonarFichaTecnica(modulo_id_que_vai_clonar, modulo_id_que_esta_s
 
     // criando ficha técnica clone com o id do módulo que está clonando
     const novaFichaTecnica = await criarFichaTecnica(modulo_id_que_vai_clonar);
-    
+  
     const equipesAntigas = await listarEquipes(ficha.dataValues.id)
-    
+  
     if (!equipesAntigas) return null
 
     let equipesCriadas

@@ -78,7 +78,8 @@ router.get(
 );
 
 
-router.post("/ficha-tecnica/:modulo_atual_id/clonar/:modulo_id", async (req, res)=> {
+router.post("/ficha-tecnica/:modulo_atual_id/clonar/:modulo_id",authMiddleware,
+  authorizeRole(["adm", "professor"]), async (req, res)=> {
   const { modulo_atual_id , modulo_id } = req.params;
   try {
     const resultado = await clonarFichaTecnica(modulo_atual_id, modulo_id)
