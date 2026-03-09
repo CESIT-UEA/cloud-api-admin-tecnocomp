@@ -1,4 +1,4 @@
-const { Usuario, Modulo, UsuarioTemporario } = require("../models");
+const { Usuario, Modulo, UsuarioTemporario, PlataformaRegistro } = require("../models");
 const bcrypt = require("bcrypt");
 const { gerarCodigoEmail } = require("../utils/validarEmail");
 
@@ -163,6 +163,19 @@ async function verificaModuloEhDoUsuario(id_usuario, id_modulo) {
   }
 }
 
+async function verificaPlataformaEhDoUsuario(id_usuario, id_plataforma) {
+  const usuario = await Usuario.findByPk(id_usuario);
+  if (!usuario) {
+    return false;
+  }
+
+  const verificaPlataforma = await PlataformaRegistro.findOne({
+    where: { usuario_id: usuario.id, id: id_plataforma },
+  });
+
+  return verificaPlataforma != null;
+}
+
 
 async function infoPaginacaoUsuarios(){
   try {
@@ -219,5 +232,6 @@ module.exports = {
   verificaModuloEhDoUsuario,
   infoPaginacaoUsuarios,
   createUserWithGoogle,
-  syncFotoDePerfil
+  syncFotoDePerfil,
+  verificaPlataformaEhDoUsuario
 };

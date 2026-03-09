@@ -1,5 +1,6 @@
 const { PlataformaRegistro, Usuario } = require("../models");
 const bcrypt = require("bcrypt");
+const usuarioService = require('../services/usuario')
 
 async function criarPlataforma({
   plataformaUrl,
@@ -105,29 +106,68 @@ async function atualizarPlataforma(id, dadosAtualizados) {
 }
 
 
-async function deletarPlataforma(idAdm, senhaAdm, idExcluir) {
+async function deletarPlataforma(idUsuario, senhaAdm, idExcluir) {
   try {
-    const admin = await Usuario.findOne({ where: { id: idAdm, tipo: "adm" } });
-    if (!admin || !(await bcrypt.compare(senhaAdm, admin.senha))) {
-      return false;
+
+    const admin = await Usuario.findOne({ where: { id: idUsuario, tipo: "adm" } });
+
+    if (admin) {
+      const senhaCorreta = await bcrypt.compare(senhaAdm, admin.senha);
+      if (!senhaCorreta) {
+        const error = new Error("Senha incorreta");
+        error.status = 401;
+        throw error;
+      }
+
+      const plataforma = await PlataformaRegistro.findByPk(idExcluir);
+      if (!plataforma) {
+        const error = new Error("Plataforma não encontrada");
+        error.status = 404;
+        throw error;
+      }
+
+      await plataforma.destroy();
+      return true;
+
+    } else {
+
+      const plataformaDoProfessor = await usuarioService.verificaPlataformaEhDoUsuario(
+        idUsuario,
+        idExcluir
+      );
+
+      if (!plataformaDoProfessor) {
+        const error = new Error("Sem permissão");
+        error.status = 403;
+        throw error;
+      }
+
+      const plataforma = await PlataformaRegistro.findByPk(idExcluir);
+      if (!plataforma) {
+        const error = new Error("Plataforma não encontrada");
+        error.status = 404;
+        throw error;
+      }
+
+      await plataforma.destroy();
+      return true;
     }
 
-    const plataforma = await PlataformaRegistro.findByPk(idExcluir);
-    if (!plataforma) {
-      return false;
-    }
-
-    await plataforma.destroy();
-    return true;
   } catch (error) {
+    if (error.name === "SequelizeForeignKeyConstraintError") {
+      const fkError = new Error("PLATAFORMA_COM_ALUNOS");
+      fkError.status = 400;
+      throw fkError;
+    }
+
     console.error("Erro ao deletar plataforma:", error);
-    throw new Error("Erro ao deletar plataforma");
+    throw error;
   }
 }
 
 async function infoPaginacaoPlataformas() {
   try {
-    const limit = 3;
+    const limit = 2;
     const totalRegistros = await PlataformaRegistro.count();
     const totalPaginas = Math.ceil(totalRegistros / limit);
     
@@ -140,7 +180,7 @@ async function infoPaginacaoPlataformas() {
 
 async function infoPlataformasPorUsuario(idUsuario){
   try {
-    const limit = 3; 
+    const limit = 2; 
     const totalRegistros = await PlataformaRegistro.count({
       where: { usuario_id: idUsuario } 
     });

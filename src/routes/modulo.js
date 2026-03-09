@@ -193,14 +193,13 @@ router.delete(
       const { id } = req.params;
       const { idAdm, senhaAdm } = req.query;
 
-      const deletado = await moduloService.deletarModulo(idAdm, senhaAdm, id);
-      if (!deletado) {
-        return res.status(404).json({ error: "Módulo não encontrado" });
-      }
+      await moduloService.deletarModulo(idAdm, senhaAdm, id);
+    
+
       res.status(200).json({ message: "Módulo deletado com sucesso" });
     } catch (error) {
-      console.error("Erro ao deletar módulo:", error);
-      res.status(500).json({ error: "Erro ao deletar módulo" });
+      console.log(error, 'teste de erro')
+      res.status(error.status || 500).json({ error: error.message || "Erro ao deletar módulo" });
     }
   }
 );

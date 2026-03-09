@@ -151,9 +151,18 @@ async function deletarModulo(idAdm, senhaAdm, idExcluir) {
   try {
     const admin = await Usuario.findOne({ where: { id: idAdm, tipo: "adm" } });
 
-    if (admin != null) {
-      if (!admin || !(await bcrypt.compare(senhaAdm, admin.senha))) {
-        return false;
+    if (admin) {
+      // if (!admin || !(await bcrypt.compare(senhaAdm, admin.senha))) {
+      //   return false;
+      // }
+
+      const senhaCorreta = await bcrypt.compare(senhaAdm, admin.senha)
+
+      if (!senhaCorreta) {
+        const error = new Error("Senha incorreta")
+        error.status = 401
+        
+        throw error
       }
 
       const modulo = await Modulo.findByPk(idExcluir, {
@@ -161,7 +170,9 @@ async function deletarModulo(idAdm, senhaAdm, idExcluir) {
       });
 
       if (!modulo) {
-        return false;
+        const error = new Error("Módulo não encontrado");
+        error.status = 404;
+        throw error;
       }
 
       await modulo.destroy();
@@ -171,24 +182,32 @@ async function deletarModulo(idAdm, senhaAdm, idExcluir) {
         idAdm,
         idExcluir
       );
-      if (verificaModulo) {
-        const modulo = await Modulo.findByPk(idExcluir, {
-          include: [{ model: Topico, as: "Topicos" }],
-        });
+        if (!verificaModulo) {
+          const error = new Error("Sem permissão");
+          error.status = 403;
+          throw error;
+      }
 
-        if (!modulo) {
-          return false;
-        }
+        if (verificaModulo) {
+          const modulo = await Modulo.findByPk(idExcluir, {
+            include: [{ model: Topico, as: "Topicos" }],
+          });
 
-        await modulo.destroy();
-        return true;
+          if (!modulo) {
+            const error = new Error("Módulo não encontrado");
+            error.status = 404;
+            throw error;
+          }
+
+          await modulo.destroy();
+          return true;
       } else {
         return false;
       }
     }
   } catch (error) {
     console.error("Erro ao deletar módulo:", error);
-    throw new Error("Erro ao deletar módulo");
+    throw error;
   }
 }
 

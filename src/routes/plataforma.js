@@ -4,6 +4,7 @@ const authMiddleware = require('../middleware/auth');
 const router = express.Router();
 const authorizeRole = require('../middleware/authorizeRole');
 
+
 /**
  * @swagger
  * /api/plataforma:
@@ -191,16 +192,34 @@ router.delete('/plataforma/:id', authMiddleware,authorizeRole(['adm','professor'
     const { id } = req.params;
     const { idAdm, senhaAdm } = req.query;
 
-    const sucesso = await plataformaService.deletarPlataforma(idAdm, senhaAdm, id);
-    if (!sucesso) {
-      return res.status(404).json({ error: 'Plataforma não encontrada' });
-    }
-    res.status(204).send();
+    await plataformaService.deletarPlataforma(idAdm, senhaAdm, id);
+    
+    res.status(200).json({ message: 'Plataforma deletada com sucesso.' });
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: error.message });
+
+      if (error.message === "PLATAFORMA_COM_ALUNOS") {
+        return res.status(409).json({
+          error: "Não é possível excluir a plataforma porque existem alunos vinculados."
+        });
+      }
+
+      if (error.status === 401) {
+        return res.status(401).json({ error: error.message });
+      }
+
+      if (error.status === 403) {
+        return res.status(403).json({ error: error.message });
+      }
+
+      if (error.status === 404) {
+        return res.status(404).json({ error: error.message });
+      }
+
+      console.error(error);
+      res.status(500).json({ error: error.message || "Erro ao deletar plataforma" });
+    }
   }
-});
+);
 
 /**
  * @swagger
