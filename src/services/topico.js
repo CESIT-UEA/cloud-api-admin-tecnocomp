@@ -14,6 +14,7 @@ const referenciasService = require("./referenciasService");
 const exerciciosService = require("./exerciciosService");
 const { validarTopico } = require("../utils/validarTopico");
 const bcrypt = require("bcrypt");
+const usuarioService = require('../services/usuario')
 
 async function obterTopicoCompletoPaginadosPorModulo(idModulo, pagina = 1) {
   try {
@@ -104,11 +105,13 @@ async function criarTopico(dadosTopico) {
 }
 
 async function excluirTopico(id, idAdm, senhaAdm) {
-  const transaction = await sequelize.transaction(); // Inicia a transação
+  const transaction = await sequelize.transaction();
+
   try {
-    const admin = await Usuario.findOne({ where: { id: idAdm, tipo: "adm" } });
-    if (!admin || !(await bcrypt.compare(senhaAdm, admin.senha))) {
-      throw new Error("Autenticação falhou");
+    const usuario = await Usuario.findByPk(idAdm);
+
+    if (!usuario) {
+      throw new Error("Usuário não encontrado");
     }
 
     const topico = await Topico.findByPk(id, {
@@ -122,43 +125,64 @@ async function excluirTopico(id, idAdm, senhaAdm) {
           include: [{ model: Alternativas, as: "Alternativas" }],
         },
       ],
-      transaction, // Adiciona a transação
+      transaction,
     });
 
     if (!topico) {
       throw new Error("Tópico não encontrado");
     }
 
+    // Se for admin precisa validar senha
+    if (usuario.tipo === "adm") {
+      const senhaCorreta = await bcrypt.compare(senhaAdm, usuario.senha);
+
+      if (!senhaCorreta) {
+        throw new Error("Senha incorreta");
+      }
+    } 
+    // Se não for admin, verifica se é dono do tópico
+    else {
+      const verificaTopico = await usuarioService.verificaTopicoEhDoUsuario(
+        idAdm,
+        id
+      );
+
+      if (!verificaTopico) {
+        throw new Error("Sem permissão");
+      }
+    }
+
     // Exclui VideoUrls
-    topico.VideoUrls.forEach(async (video) => {
+    for (const video of topico.VideoUrls) {
       await video.destroy({ transaction });
-    });
+    }
 
     // Exclui SaibaMais
-    topico.SaibaMais.forEach(async (saibaMais) => {
+    for (const saibaMais of topico.SaibaMais) {
       await saibaMais.destroy({ transaction });
-    });
+    }
 
     // Exclui Referencias
-    topico.Referencias.forEach(async (referencia) => {
+    for (const referencia of topico.Referencias) {
       await referencia.destroy({ transaction });
-    });
+    }
 
     // Exclui Exercícios e Alternativas
-    topico.Exercicios.forEach(async (exercicio) => {
-      exercicio.Alternativas.forEach(async (alternativa) => {
+    for (const exercicio of topico.Exercicios) {
+      for (const alternativa of exercicio.Alternativas) {
         await alternativa.destroy({ transaction });
-      });
+      }
       await exercicio.destroy({ transaction });
-    });
+    }
 
     // Exclui o tópico
     await topico.destroy({ transaction });
 
-    await transaction.commit(); // Confirma a transação
+    await transaction.commit();
     return true;
+
   } catch (error) {
-    await transaction.rollback(); // Reverte a transação em caso de erro
+    await transaction.rollback();
     console.error("Erro ao excluir tópico:", error);
     throw error;
   }

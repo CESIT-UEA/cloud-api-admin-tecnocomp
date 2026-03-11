@@ -1,4 +1,4 @@
-const { Usuario, Modulo, UsuarioTemporario, PlataformaRegistro } = require("../models");
+const { Usuario, Modulo, UsuarioTemporario, PlataformaRegistro, Topico } = require("../models");
 const bcrypt = require("bcrypt");
 const { gerarCodigoEmail } = require("../utils/validarEmail");
 
@@ -163,6 +163,32 @@ async function verificaModuloEhDoUsuario(id_usuario, id_modulo) {
   }
 }
 
+
+async function verificaTopicoEhDoUsuario(idUsuario, idTopico) {
+  try {
+
+    const topico = await Topico.findOne({
+      where: { id: idTopico },
+      include: [
+        {
+          model: Modulo,
+          attributes: ["usuario_id"]
+        }
+      ]
+    });
+
+    if (!topico || !topico.Modulo) {
+      return false;
+    }
+    
+    return topico.Modulo.usuario_id === Number(idUsuario);
+
+  } catch (error) {
+    console.error("Erro ao verificar tópico do usuário:", error);
+    throw error;
+  }
+}
+
 async function verificaPlataformaEhDoUsuario(id_usuario, id_plataforma) {
   const usuario = await Usuario.findByPk(id_usuario);
   if (!usuario) {
@@ -233,5 +259,6 @@ module.exports = {
   infoPaginacaoUsuarios,
   createUserWithGoogle,
   syncFotoDePerfil,
-  verificaPlataformaEhDoUsuario
+  verificaPlataformaEhDoUsuario,
+  verificaTopicoEhDoUsuario
 };

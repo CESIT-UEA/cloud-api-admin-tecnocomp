@@ -152,10 +152,7 @@ async function deletarModulo(idAdm, senhaAdm, idExcluir) {
     const admin = await Usuario.findOne({ where: { id: idAdm, tipo: "adm" } });
 
     if (admin) {
-      // if (!admin || !(await bcrypt.compare(senhaAdm, admin.senha))) {
-      //   return false;
-      // }
-
+      
       const senhaCorreta = await bcrypt.compare(senhaAdm, admin.senha)
 
       if (!senhaCorreta) {
