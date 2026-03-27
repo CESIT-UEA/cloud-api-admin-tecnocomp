@@ -33,7 +33,7 @@ const UsuarioTemporario = sequelize.define('usuarioTemporario', {
     type: DataTypes.DATE
   }
 }, {
-    tableName: 'usuarioTemporario',
+    tableName: 'usuariotemporario',
     timestamps: false
 })
 

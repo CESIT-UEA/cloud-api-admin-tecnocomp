@@ -24,7 +24,7 @@ const ReferenciaModulo = sequelize.define('ReferenciaModulo', {
     },
   },
 }, {
-  tableName: 'ReferenciasModulo',
+  tableName: 'referenciasModulo',
   timestamps: false,
 });
 

@@ -22,7 +22,7 @@ const SaibaMais = sequelize.define('SaibaMais', {
     type: DataTypes.TEXT,
   },
 }, {
-  tableName: 'SaibaMais',
+  tableName: 'saibaMais',
   timestamps: false,
 });
 

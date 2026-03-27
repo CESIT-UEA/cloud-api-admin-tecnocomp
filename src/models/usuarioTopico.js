@@ -32,7 +32,7 @@ const UsuarioTopico = sequelize.define('UsuarioTopico', {
     defaultValue: false,
   },
 }, {
-  tableName: 'UsuarioTopico',
+  tableName: 'usuarioTopico',
   timestamps: false,
 });
 

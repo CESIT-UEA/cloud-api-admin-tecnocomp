@@ -27,7 +27,7 @@ const Membro = sequelize.define('Membro', {
     },
   },
 }, {
-  tableName: 'Membros',
+  tableName: 'membros',
   timestamps: false,
 });
 

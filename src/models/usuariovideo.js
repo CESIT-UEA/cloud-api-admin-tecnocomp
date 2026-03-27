@@ -28,7 +28,7 @@ const UsuarioVideo = sequelize.define('UsuarioVideo', {
     defaultValue: false,
   },
 }, {
-  tableName: 'UsuarioVideo',
+  tableName: 'usuarioVideo',
   timestamps: false,
 });
 

@@ -22,7 +22,7 @@ const Referencias = sequelize.define('Referencias', {
     type: DataTypes.TEXT,
   },
 }, {
-  tableName: 'Referencias',
+  tableName: 'referencias',
   timestamps: false,
 });
 

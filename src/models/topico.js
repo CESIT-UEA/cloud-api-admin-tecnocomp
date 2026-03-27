@@ -26,7 +26,7 @@ const Topico = sequelize.define('Topico', {
     type: DataTypes.TEXT,
   },
 }, {
-  tableName: 'Topicos',
+  tableName: 'topicos',
   timestamps: false,
 });
 

@@ -76,6 +76,16 @@ app.use(
   })
 );
 
+// app.use('/ebooks', express.static(process.env.FILE_PATH))
+
+app.use('/ebooks', express.static(process.env.FILE_PATH, {
+  setHeaders: (res, filePath) => {
+    if (path.extname(filePath) === '.pdf') {
+      res.setHeader('Content-Type', 'application/pdf');
+    }
+  }
+}));
+
 // Rotas
 app.use('/auth', authRoutes);
 app.use('/api', plataformaRoutes);
@@ -94,12 +104,11 @@ app.use('/api', forgotPassword)
 app.use('/api', exercicioRoutes);
 app.use('/api', autoRegister);
 
-app.use('/ebooks', express.static(process.env.FILE_PATH))
+
 
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 // Inicializa o servidor e cria um administrador padrão se não existir
 const setup = async () => {
-  await sequelize.sync();
 
   const adminExists = await Usuario.findOne({ where: { tipo: 'adm' } });
   if (!adminExists) {
@@ -112,15 +121,9 @@ const setup = async () => {
     });
     console.log('Administrador padrão criado com sucesso.');
   }
-  if(process.env.PRODUCAO_VARIAVEL == 'true'){
-    https.createServer(sslOptions, app).listen(PORT, () => {
-      console.log(`Servidor rodando em https://172.25.1.5:${PORT}`);
-    });
-  }else{
-    app.listen(3001, () => {
-      console.log(`Abrindo na porta 3001`)
-    })
-  }
+  app.listen(PORT, '0.0.0.0', () => {
+  console.log(`Servidor rodando na porta ${PORT}`);
+  });
 
 };
 

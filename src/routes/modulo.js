@@ -418,8 +418,19 @@ router.post(
  *       200:
  *         description: Arquivo retornado
  */
-router.get("/modulos/file/:name", (req, res) => {
-  res.sendFile(path.join(process.env.FILE_PATH, req.params.name));
+router.get("/modulos/file/:modulo/:file", (req, res) => {
+  const { modulo, file } = req.params;
+
+  const safeModulo = modulo.replace(/[^a-zA-Z0-9-_]/g, '');
+  const safeFile = file.replace(/[^a-zA-Z0-9-_.]/g, '');
+
+  const filePath = path.join(process.env.FILE_PATH, safeModulo, safeFile);
+
+  res.sendFile(filePath, (err) => {
+    if (err) {
+      return res.status(404).json({ error: "Arquivo não encontrado" });
+    }
+  });
 });
 
 /**

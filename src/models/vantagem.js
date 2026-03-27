@@ -20,7 +20,7 @@ const Vantagem = sequelize.define('Vantagem', {
     },
   },
 }, {
-  tableName: 'Vantagens',
+  tableName: 'vantagens',
   timestamps: false,
 });
 

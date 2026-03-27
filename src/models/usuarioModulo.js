@@ -48,7 +48,7 @@ const UsuarioModulo = sequelize.define(
     },
   },
   {
-    tableName: "UsuarioModulo",
+    tableName: "usuarioModulo",
     timestamps: false,
   }
 );
