@@ -1,17 +1,28 @@
 const jwt = require('jsonwebtoken');
-const SECRET_KEY = 'your_secret_key'; // coloque no .env depois!
 
 module.exports = (req, res, next) => {
-  const token = req.headers['authorization'];
-  if (!token) return res.status(403).json({ error: 'Token não fornecido' });
+  const authHeader = req.headers['authorization'];
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return res.status(401).json({ error: 'Token não fornecido ou mal formatado' });
+  }
+
+  const token = authHeader.split(' ')[1];
 
   try {
-    const decoded = jwt.verify(token.split(' ')[1], SECRET_KEY);
-    req.userId = decoded.id;
-    req.userRole = decoded.tipo;
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+
+    if (!decoded.id || !decoded.tipo){
+      return res.status(401).json({ error: 'Token inválido'})
+    }
+
+    req.user = {
+      id: decoded.id,
+      role: decoded.tipo
+    };
+
     next();
   } catch (error) {
-    console.log(error);
+    console.error('Erro na autenticação JWT');
     return res.status(401).json({ error: 'Token inválido' });
   }
 };

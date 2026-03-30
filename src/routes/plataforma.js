@@ -96,7 +96,7 @@ router.get('/plataforma', authMiddleware,authorizeRole(['adm']), async (req, res
  */
 router.get('/plataforma/:id', authMiddleware,authorizeRole(['adm','professor']), async (req, res) => {
   try {
-    const plataforma = await plataformaService.obterPlataformaPorId(req.params.id);
+    const plataforma = await plataformaService.obterPlataformaPorId(req.params.id, req.user);
     if (!plataforma) {
       return res.status(404).json({ error: 'Plataforma não encontrada' });
     }
@@ -143,7 +143,7 @@ router.get('/plataforma/:id', authMiddleware,authorizeRole(['adm','professor']),
  */
 router.put('/plataforma/:id', authMiddleware,authorizeRole(['adm','professor']), async (req, res) => {
   try {
-    const plataformaAtualizada = await plataformaService.atualizarPlataforma(req.params.id, req.body);
+    const plataformaAtualizada = await plataformaService.atualizarPlataforma(req.params.id, req.body, req.user);
     if (!plataformaAtualizada) {
       return res.status(404).json({ error: 'Plataforma não encontrada' });
     }

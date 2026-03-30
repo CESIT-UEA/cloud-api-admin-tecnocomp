@@ -6,7 +6,6 @@ const authorizeRole = require('../middleware/authorizeRole');
 const authMiddleware = require('../middleware/auth');
 const { createUser, createUserWithGoogle, syncFotoDePerfil } = require('../services/usuario');
 const router = express.Router();
-const SECRET_KEY = 'your_secret_key';
 const REFRESH_SECRET_KEY = 'your_refresh_secret_key';
 const fetch = require("node-fetch");
 const { validarToken } = require('../utils/validarToken')
@@ -29,11 +28,11 @@ router.post('/login-google', async (req, res)=> {
 
     const accessToken = jwt.sign(
       { id: usuario.id, tipo: usuario.tipo, username: usuario.username, email: usuario.email, url_foto: usuario.url_foto },
-      SECRET_KEY,
+      process.env.JWT_SECRET,
       { expiresIn: '1h' }
     );
 
-    const refreshToken = jwt.sign({ id: usuario.id }, REFRESH_SECRET_KEY, { expiresIn: '7d' });
+    const refreshToken = jwt.sign({ id: usuario.id }, process.env.REFRESH_SECRET_KEY, { expiresIn: '7d' });
 
     res.json({ accessToken, refreshToken });
 
@@ -146,11 +145,11 @@ router.post('/login', async (req, res) => {
 
     const accessToken = jwt.sign(
       { id: usuario.id, tipo: usuario.tipo, username: usuario.username, email: usuario.email, url_foto: usuario.url_foto },
-      SECRET_KEY,
+      process.env.JWT_SECRET,
       { expiresIn: '1h' }
     );
 
-    const refreshToken = jwt.sign({ id: usuario.id }, REFRESH_SECRET_KEY, { expiresIn: '7d' });
+    const refreshToken = jwt.sign({ id: usuario.id }, process.env.REFRESH_SECRET_KEY, { expiresIn: '7d' });
 
     res.json({ accessToken, refreshToken });
   } catch (error) {
@@ -193,10 +192,10 @@ router.post('/refresh-token', (req, res) => {
   }
 
   try {
-    const decoded = jwt.verify(refreshToken, REFRESH_SECRET_KEY);
+    const decoded = jwt.verify(refreshToken, process.env.REFRESH_SECRET_KEY);
     const newAccessToken = jwt.sign(
       { id: decoded.id },
-      SECRET_KEY,
+      process.env.JWT_SECRET,
       { expiresIn: '1h' }
     );
 

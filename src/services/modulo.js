@@ -21,6 +21,7 @@ const topicoService = require("../services/topico");
 const usuarioService = require("../services/usuario");
 const { randomUUID } = require("crypto");
 const { Op, fn, col } = require("sequelize");
+const { findOwnedResource, updateOwnedResource } = require('../helpers/ownership.helper');
 
 async function criarModulo({
   nome_modulo,
@@ -75,6 +76,17 @@ async function infoPaginacaoModulos(quantidadeItens) {
   }
 }
 
+
+async function obterModuloPorId(id, user) {
+  try {
+    return await findOwnedResource(Modulo, id, user);
+  } catch (error) {
+    console.error("Erro ao buscar módulo:", error);
+    throw error;
+  }
+}
+
+
 async function infoModulosPorUsuario(idUsuario) {
   try {
     const limit = 3; 
@@ -122,28 +134,21 @@ async function obterModulosPaginadosPorUsuario(usuarioId, pagina = 1) {
   }
 }
 
-async function obterModuloPorId(id) {
-  try {
-    const modulo = await Modulo.findByPk(id);
-    return modulo;
-  } catch (error) {
-    console.error("Erro ao buscar módulo por ID:", error);
-    throw new Error("Erro ao buscar módulo por ID");
-  }
-}
 
-async function atualizarModulo(id, dadosAtualizados) {
-  try {
-    const modulo = await Modulo.findByPk(id);
-    if (!modulo) {
-      return null;
-    }
 
-    await modulo.update(dadosAtualizados);
-    return modulo;
+async function atualizarModulo(id, dadosAtualizados, user) {
+  try {
+    const modulo = await updateOwnedResource(
+      Modulo,
+      id,
+      user,
+      dadosAtualizados
+    );
+
+    return modulo; 
   } catch (error) {
     console.error("Erro ao atualizar módulo:", error);
-    throw new Error("Erro ao atualizar módulo");
+    throw error;
   }
 }
 
@@ -208,13 +213,11 @@ async function deletarModulo(idAdm, senhaAdm, idExcluir) {
   }
 }
 
-async function atualizarStatusPublicacao(id, publicar) {
+async function atualizarStatusPublicacao(id, publicar, user) {
   try {
-    const modulo = await Modulo.findByPk(id);
+    const modulo = await findOwnedResource(Modulo, id, user);
 
-    if (!modulo) {
-      return null;
-    }
+    if (!modulo) return null;
 
     modulo.publicado = publicar;
     await modulo.save();
@@ -222,14 +225,18 @@ async function atualizarStatusPublicacao(id, publicar) {
     return modulo;
   } catch (error) {
     console.error("Erro ao atualizar status de publicação:", error);
-    throw new Error("Erro ao atualizar status de publicação");
+    throw error;
   }
 }
 
-async function obterModuloPorIdESeusTopicos(id) {
+async function obterModuloPorIdESeusTopicos(id, user) {
   try {
-    const modulo = await Modulo.findByPk(id, {
-      include: [
+    const modulo = await findOwnedResource(
+      Modulo,
+      id,
+      user,
+      "usuario_id",
+      [
         {
           model: Topico,
           include: [
@@ -249,12 +256,8 @@ async function obterModuloPorIdESeusTopicos(id) {
             { model: Equipe, as: "Equipes", include: [{ model: Membro }] },
           ],
         },
-        {
-          model: ReferenciaModulo,
-        },
-        {
-          model: Vantagem,
-        },
+        { model: ReferenciaModulo },
+        { model: Vantagem },
         {
           model: UsuarioModulo,
           where: {
@@ -265,8 +268,10 @@ async function obterModuloPorIdESeusTopicos(id) {
           order: [["id", "DESC"]],
           required: false,
         },
-      ],
-    });
+      ]
+    );
+
+    if (!modulo) return null;
 
     const statsAvaliacoes = await UsuarioModulo.findOne({
       attributes: [
@@ -282,13 +287,13 @@ async function obterModuloPorIdESeusTopicos(id) {
 
     return {
       ...modulo.toJSON(),
-      mediaAvaliacoes: parseFloat(statsAvaliacoes.media_avaliacao) || 0,
+      mediaAvaliacoes: parseFloat(statsAvaliacoes?.media_avaliacao) || 0,
       quantidadeAvaliacoes:
-        parseInt(statsAvaliacoes.quantidade_avaliacoes) || 0,
+        parseInt(statsAvaliacoes?.quantidade_avaliacoes) || 0,
     };
   } catch (error) {
     console.error("Erro ao buscar módulo por ID:", error);
-    throw new Error("Erro ao buscar módulo por ID" + error);
+    throw error;
   }
 }
 

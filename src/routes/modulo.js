@@ -45,7 +45,6 @@ const upload = multer({ storage: multer.memoryStorage() });
 router.post(
   "/modulo",
   authMiddleware,
-  authMiddleware,
   authorizeRole(["adm", "professor"]),
   async (req, res) => {
     const { nome_modulo, video_inicial, ebookUrlGeral, nome_url, usuario_id, filesDoModulo } =
@@ -105,6 +104,8 @@ router.get(
   }
 );
 
+
+
 /**
  * @swagger
  * /api/modulos/{id}:
@@ -141,7 +142,8 @@ router.put(
       const dadosAtualizados = req.body;
       const moduloAtualizado = await moduloService.atualizarModulo(
         id,
-        dadosAtualizados
+        dadosAtualizados,
+        req.user
       );
       if (!moduloAtualizado) {
         return res.status(404).json({ error: "Módulo não encontrado" });
@@ -292,7 +294,7 @@ router.get(
   async (req, res) => {
     try {
       const { id } = req.params;
-      const modulo = await moduloService.obterModuloPorIdESeusTopicos(id);
+      const modulo = await moduloService.obterModuloPorIdESeusTopicos(id, req.user);
       if (!modulo) {
         return res.status(404).json({ error: "Módulo não encontrado" });
       }

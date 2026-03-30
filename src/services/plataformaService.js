@@ -1,6 +1,7 @@
 const { PlataformaRegistro, Usuario } = require("../models");
 const bcrypt = require("bcrypt");
 const usuarioService = require('../services/usuario')
+const { findOwnedResource, updateOwnedResource } = require("../helpers/ownership.helper");
 
 async function criarPlataforma({
   plataformaUrl,
@@ -48,13 +49,14 @@ async function listarPlataformasPaginadas(pagina = 1) {
   }
 }
 
-async function obterPlataformaPorId(id) {
+async function obterPlataformaPorId(id, user) {
   try {
-    const plataforma = await PlataformaRegistro.findByPk(id);
-    return plataforma;
+    const plataforma = await findOwnedResource(PlataformaRegistro, id, user);
+
+    return plataforma; 
   } catch (error) {
     console.error("Erro ao buscar plataforma por ID:", error);
-    throw new Error("Erro ao buscar plataforma por ID");
+    throw error;
   }
 }
 
@@ -75,9 +77,15 @@ async function obterPlataformasPaginadasPorUsuario(usuarioId, pagina = 1) {
   }
 }
 
-async function atualizarPlataforma(id, dadosAtualizados) {
+async function atualizarPlataforma(id, dadosAtualizados, user) {
   try {
-    const plataforma = await PlataformaRegistro.findByPk(id);
+    const plataforma = await updateOwnedResource(
+      PlataformaRegistro,
+      id,
+      user,
+      dadosAtualizados
+    );
+
     if (!plataforma) return null;
 
     const {
@@ -89,19 +97,20 @@ async function atualizarPlataforma(id, dadosAtualizados) {
       customQuintenaria,
     } = dadosAtualizados;
 
+    const isCustom = temaTipo === "customizado";
+
     await plataforma.update({
-      ...dadosAtualizados,
-      customPrimaria: temaTipo === "customizado" ? customPrimaria : null,
-      customSecundaria: temaTipo === "customizado" ? customSecundaria : null,
-      customTerciaria: temaTipo === "customizado" ? customTerciaria : null,
-      customQuartenaria: temaTipo === "customizado" ? customQuartenaria : null,
-      customQuintenaria: temaTipo === "customizado" ? customQuintenaria : null,
+      customPrimaria: isCustom ? customPrimaria : null,
+      customSecundaria: isCustom ? customSecundaria : null,
+      customTerciaria: isCustom ? customTerciaria : null,
+      customQuartenaria: isCustom ? customQuartenaria : null,
+      customQuintenaria: isCustom ? customQuintenaria : null,
     });
 
     return plataforma;
   } catch (error) {
     console.error("Erro ao atualizar plataforma:", error);
-    throw new Error("Erro ao atualizar plataforma");
+    throw error;
   }
 }
 
