@@ -252,7 +252,8 @@ router.patch(
 
       const moduloAtualizado = await moduloService.atualizarStatusPublicacao(
         id,
-        publicar
+        publicar,
+        req.user
       );
 
       if (!moduloAtualizado) {

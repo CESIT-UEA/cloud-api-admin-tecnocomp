@@ -218,7 +218,7 @@ async function atualizarStatusPublicacao(id, publicar, user) {
     const modulo = await findOwnedResource(Modulo, id, user);
 
     if (!modulo) return null;
-
+    
     modulo.publicado = publicar;
     await modulo.save();
 
