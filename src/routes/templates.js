@@ -91,8 +91,7 @@ router.get("/templates/:id", authMiddleware,authorizeRole(['adm','professor']), 
 router.post("/templates/clonar/:id", authMiddleware,authorizeRole(['adm','professor']), async (req, res) => {
   try {
     const { id } = req.params;
-    const usuarioId = req.userId;
-
+    const usuarioId = req.user.id;
     const novoModulo = await templateService.clonarTemplate(id, usuarioId);
 
     if (!novoModulo) {

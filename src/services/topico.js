@@ -201,11 +201,11 @@ async function editarTopico(id, dadosAtualizados, user) {
     textoApoio,
     videoUrls,
     saibaMais,
-    referencias,
     exercicios,
   } = dadosAtualizados;
 
   try {
+   
     const topico = await Topico.findOne({
       where: { id },
       include: [
@@ -227,10 +227,10 @@ async function editarTopico(id, dadosAtualizados, user) {
 
     if (!topico) return null;
 
-    // 🔄 update base
+    
     await topico.update({ nome_topico, ebookUrlGeral, textoApoio });
 
-    // VideoUrls
+    
     if (videoUrls) {
       await VideoUrls.destroy({ where: { id_topico: id } });
       for (const url of videoUrls) {

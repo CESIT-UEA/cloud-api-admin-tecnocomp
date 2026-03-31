@@ -218,7 +218,7 @@ async function atualizarStatusPublicacao(id, publicar, user) {
     const modulo = await findOwnedResource(Modulo, id, user);
 
     if (!modulo) return null;
-    
+
     modulo.publicado = publicar;
     await modulo.save();
 
@@ -231,12 +231,19 @@ async function atualizarStatusPublicacao(id, publicar, user) {
 
 async function obterModuloPorIdESeusTopicos(id, user) {
   try {
-    const modulo = await findOwnedResource(
-      Modulo,
-      id,
-      user,
-      "usuario_id",
-      [
+    const where = { id };
+
+
+    if (user.role !== "adm") {
+      where[Op.or] = [
+        { usuario_id: user.id }, // dono
+        { template: true }       // público
+      ];
+    }
+
+    const modulo = await Modulo.findOne({
+      where,
+      include: [
         {
           model: Topico,
           include: [
@@ -268,8 +275,8 @@ async function obterModuloPorIdESeusTopicos(id, user) {
           order: [["id", "DESC"]],
           required: false,
         },
-      ]
-    );
+      ],
+    });
 
     if (!modulo) return null;
 

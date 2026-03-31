@@ -40,6 +40,9 @@ async function clonarTemplate(id, usuarioId) {
     }
 
     const topicosOriginais = await topicoService.obterTopicoCompletoPorModulo(id);
+    console.log(topicosOriginais, 'tópicos originais')
+
+    console.log(usuarioId, 'usuarioID')
 
     const uuid = randomUUID();
     const novoModulo = await Modulo.create({
