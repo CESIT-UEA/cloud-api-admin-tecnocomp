@@ -37,7 +37,12 @@ router.get('/topicos/:id', authMiddleware,authorizeRole(['adm','professor']), as
       return res.status(400).json({ error: 'ID do módulo é obrigatório' });
     }
 
-    const topico = await topicoService.obterTopicoCompletoPaginadosPorModulo(id, page);
+    const topico = await topicoService.obterTopicoCompletoPaginadosPorModulo(id, page, req.user);
+
+    if (!topico) {
+      return res.status(404).json({ error: 'Módulo não encontrado' });
+    }
+
     const infoTopicosPorModulos = await topicoService.infoTopicosPorModulo(id);
     
     res.status(200).json({ topico, infoTopicosPorModulos});
@@ -123,7 +128,12 @@ router.put('/topico/:id', authMiddleware,authorizeRole(['adm','professor']), asy
     const { id } = req.params;
     const dadosAtualizados = req.body;
 
-    const topico = await topicoService.editarTopico(id, dadosAtualizados);
+    const topico = await topicoService.editarTopico(id, dadosAtualizados, req.user);
+
+    if (!topico) {
+      return res.status(404).json({ error: 'Tópico não encontrado' });
+    }
+
     res.status(200).json(topico);
   } catch (error) {
     console.error('Erro ao editar tópico:', error);
@@ -197,15 +207,26 @@ router.delete('/topico/:id', authMiddleware,authorizeRole(['adm','professor']), 
  *       404:
  *         description: Tópico não encontrado
  */
-router.get('/topico/:id', authMiddleware,authorizeRole(['adm','professor']), async (req, res) => {
-  try {
-    const { id } = req.params;
-    const topico = await topicoService.obterTopicoPorId(id);
-    res.status(200).json(topico);
-  } catch (error) {
-    console.error('Erro ao obter tópico:', error.message);
-    res.status(404).json({ error: 'Tópico não encontrado' });
+router.get(
+  '/topico/:id',
+  authMiddleware,
+  authorizeRole(['adm','professor']),
+  async (req, res) => {
+    try {
+      const { id } = req.params;
+
+      const topico = await topicoService.obterTopicoPorId(id, req.user);
+
+      if (!topico) {
+        return res.status(404).json({ error: 'Tópico não encontrado' });
+      }
+
+      return res.status(200).json(topico);
+    } catch (error) {
+      console.error('Erro ao obter tópico:', error);
+      return res.status(500).json({ error: 'Erro ao obter tópico' });
+    }
   }
-});
+);
 
 module.exports = router;

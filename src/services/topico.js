@@ -6,20 +6,27 @@ const {
   Referencias,
   Exercicios,
   Alternativas,
+  Modulo,
 } = require("../models");
 const { sequelize } = require("../db/connect");
 const videoUrlsService = require("./videoUrlsService");
 const saibaMaisService = require("./saibaMaisService");
-const referenciasService = require("./referenciasService");
 const exerciciosService = require("./exerciciosService");
 const { validarTopico } = require("../utils/validarTopico");
 const bcrypt = require("bcrypt");
 const usuarioService = require('../services/usuario')
+const { findOwnedResource, updateOwnedResource } = require('../helpers/ownership.helper');
 
-async function obterTopicoCompletoPaginadosPorModulo(idModulo, pagina = 1) {
+async function obterTopicoCompletoPaginadosPorModulo(idModulo, pagina = 1, user) {
   try {
+
+    // valida dono do módulo
+    const modulo = await findOwnedResource(Modulo, idModulo, user);
+    if (!modulo) return null;
+
     const limit = 3
     const offset = (pagina - 1) * limit
+
     return await Topico.findAll({
       where: { id_modulo: idModulo },
       offset,
@@ -64,7 +71,6 @@ async function obterTopicoCompletoPorModulo(idModulo) {
 }
 
 async function criarTopico(dadosTopico) {
-  console.log('Entrei na função criar tópicos', dadosTopico.exercicios)
   const erros = validarTopico(dadosTopico);
   if (erros.length > 0) {
     throw new Error(`Validação falhou: ${erros.join("; ")}`);
@@ -188,7 +194,7 @@ async function excluirTopico(id, idAdm, senhaAdm) {
   }
 }
 
-async function editarTopico(id, dadosAtualizados) {
+async function editarTopico(id, dadosAtualizados, user) {
   const {
     nome_topico,
     ebookUrlGeral,
@@ -200,9 +206,14 @@ async function editarTopico(id, dadosAtualizados) {
   } = dadosAtualizados;
 
   try {
-    // Obter o tópico pelo ID e incluir os relacionamentos usando aliases
-    const topico = await Topico.findByPk(id, {
+    const topico = await Topico.findOne({
+      where: { id },
       include: [
+        {
+          model: Modulo,
+          where: user.role !== "adm" ? { usuario_id: user.id } : undefined,
+          attributes: [],
+        },
         { model: VideoUrls, as: "VideoUrls" },
         { model: SaibaMais, as: "SaibaMais" },
         { model: Referencias, as: "Referencias" },
@@ -214,14 +225,12 @@ async function editarTopico(id, dadosAtualizados) {
       ],
     });
 
-    if (!topico) {
-      throw new Error("Tópico não encontrado");
-    }
+    if (!topico) return null;
 
-    // Atualizar os campos básicos do tópico
+    // 🔄 update base
     await topico.update({ nome_topico, ebookUrlGeral, textoApoio });
 
-    // Atualizar ou substituir VideoUrls
+    // VideoUrls
     if (videoUrls) {
       await VideoUrls.destroy({ where: { id_topico: id } });
       for (const url of videoUrls) {
@@ -229,7 +238,7 @@ async function editarTopico(id, dadosAtualizados) {
       }
     }
 
-    // Atualizar ou substituir SaibaMais
+    // SaibaMais
     if (saibaMais) {
       await SaibaMais.destroy({ where: { id_topico: id } });
       for (const item of saibaMais) {
@@ -241,30 +250,19 @@ async function editarTopico(id, dadosAtualizados) {
       }
     }
 
-    // Atualizar ou substituir Referencias
-    // if (referencias) {
-    //   await Referencias.destroy({ where: { id_topico: id } });
-    //   for (const ref of referencias) {
-    //     await Referencias.create({
-    //       id_topico: id,
-    //       caminhoDaImagem: ref.caminhoDaImagem,
-    //       referencia: ref.referencia,
-    //     });
-    //   }
-    // }
-
-    // Atualizar ou substituir Exercicios e suas Alternativas
+    // Exercícios
     if (exercicios) {
       await Exercicios.destroy({ where: { id_topico: id } });
+
       for (const exercicio of exercicios) {
         const novoExercicio = await Exercicios.create({
           id_topico: id,
           questao: exercicio.questao,
           resposta_esperada: exercicio.resposta_esperada,
-          aberta: exercicio.isQuestaoAberta
+          aberta: exercicio.isQuestaoAberta,
         });
-        console.log('teste',exercicio)
-        if (!exercicio.isQuestaoAberta){
+
+        if (!exercicio.isQuestaoAberta) {
           for (const alternativa of exercicio.alternativas) {
             await Alternativas.create({
               id_exercicio: novoExercicio.id,
@@ -272,13 +270,11 @@ async function editarTopico(id, dadosAtualizados) {
               explicacao: alternativa.explicacao,
               correta: alternativa.correta,
             });
-          } 
-
-        } 
+          }
+        }
       }
     }
 
-    // Retornar o tópico atualizado com o ID do módulo para o redirecionamento
     return {
       id_modulo: topico.id_modulo,
       nome_topico: topico.nome_topico,
@@ -289,10 +285,16 @@ async function editarTopico(id, dadosAtualizados) {
   }
 }
 
-async function obterTopicoPorId(id) {
+async function obterTopicoPorId(id, user) {
   try {
-    const topico = await Topico.findByPk(id, {
+    const topico = await Topico.findOne({
+      where: { id },
       include: [
+        {
+          model: Modulo,
+          where: user.role !== "adm" ? { usuario_id: user.id } : undefined,
+          attributes: [], // não retornar dados do módulo
+        },
         { model: VideoUrls, as: "VideoUrls" },
         { model: SaibaMais, as: "SaibaMais" },
         { model: Referencias, as: "Referencias" },
@@ -303,11 +305,8 @@ async function obterTopicoPorId(id) {
         },
       ],
     });
-    console.log(topico.Exercicios)
-    // console.log(JSON.stringify(topico, null, 2));
-    if (!topico) {
-      throw new Error("Tópico não encontrado");
-    }
+
+    if (!topico) return null;
 
     return topico;
   } catch (error) {
