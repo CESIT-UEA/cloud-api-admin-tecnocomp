@@ -238,7 +238,7 @@ router.patch('/users/:id/self', authMiddleware,authorizeRole(['adm','professor']
   }
 });
 
-router.get("/templates", authMiddleware,authorizeRole(['professor']), async (req, res) => {
+router.get("/templates", authMiddleware,authorizeRole(['professor', 'adm']), async (req, res) => {
   try {
     const templates = await moduloService.listarModulosTemplates();
     res.status(200).json(templates);

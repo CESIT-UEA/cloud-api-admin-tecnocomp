@@ -20,7 +20,9 @@ const authorizeRole = require('../middleware/authorizeRole');
  */
 router.get("/templates", authMiddleware,authorizeRole(['adm','professor']), async (req, res) => {
   try {
+    console.log('TEMPLATES', templates)
     const templates = await templateService.listarTemplates();
+    
     res.status(200).json(templates);
   } catch (error) {
     console.error("Erro ao listar templates:", error);
