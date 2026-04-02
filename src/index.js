@@ -122,7 +122,7 @@ const setup = async () => {
     console.log('Administrador padrão criado com sucesso.');
   }
   app.listen(PORT, '0.0.0.0', () => {
-  console.log(`Servidor rodando na porta ${PORT} teste`);
+  console.log(`Servidor rodando na porta ${PORT} teste 2`);
   });
 
 };
