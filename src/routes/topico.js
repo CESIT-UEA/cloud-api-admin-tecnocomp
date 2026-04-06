@@ -3,6 +3,62 @@ const topicoService = require('../services/topico');
 const router = express.Router();
 const authMiddleware = require('../middleware/auth');
 const authorizeRole = require('../middleware/authorizeRole');
+const multer = require('multer');
+const moduloService = require('../services/modulo');
+const path = require('path');
+const fs = require('fs');
+const crypto = require('crypto');
+const { validarPDF } = require('../utils/validarPDF');
+const { montarUrlArquivo } = require('../utils/montarURL');
+
+const storageTopico = multer.diskStorage({
+  destination: async (req, file, cb) => {
+    try {
+      const { id_modulo } = req.body;
+      
+      const modulo = await moduloService.obterModuloPorId(id_modulo, req.user);
+
+      if (!modulo){
+        return cb(new Error('Módulo não encontrado'), null);
+      }
+
+      const pastaId = modulo.filesDoModulo;
+
+      const uploadPath = path.join(process.env.FILE_PATH, pastaId);
+
+      fs.mkdirSync(uploadPath, { recursive: true });
+      
+      req.pastaId = pastaId
+
+      cb(null, uploadPath);
+    } catch (err) {
+      cb(err, null)
+    }
+  },
+  filename: (req, file, cb) => {
+    const extensao = path.extname(file.originalname).toLowerCase();
+    const nomeArquivo = crypto.randomUUID();
+    
+    cb(null, `${nomeArquivo}${extensao}`);
+  }
+})
+
+const uploadTopico = multer({
+  storage: storageTopico,
+  limits: {
+    fileSize: 10 * 1024 * 1024, // 10MB
+  },
+  fileFilter: (req, file, cb) => {
+    const ext = path.extname(file.originalname).toLowerCase();
+
+    if (file.mimetype !== "application/pdf" || ext !== ".pdf") {
+      return cb(new Error("Apenas PDFs são permitidos"));
+    }
+
+    cb(null, true);
+  }
+});
+
 
 /**
  * @swagger
@@ -44,7 +100,11 @@ router.get('/topicos/:id', authMiddleware,authorizeRole(['adm','professor']), as
     }
 
     const infoTopicosPorModulos = await topicoService.infoTopicosPorModulo(id);
-    
+
+    topico.map(topico => {
+        topico.ebookUrlGeral = montarUrlArquivo(topico.ebookUrlGeral)
+    })
+
     res.status(200).json({ topico, infoTopicosPorModulos});
   } catch (error) {
     console.error('Erro ao buscar tópico completo:', error);
@@ -80,21 +140,72 @@ router.get('/topicos/:id', authMiddleware,authorizeRole(['adm','professor']), as
  *       400:
  *         description: Campos obrigatórios ausentes
  */
-router.post('/topicos', authMiddleware,authorizeRole(['adm','professor']), async (req, res) => {
-  try {
-    const dadosTopico = req.body;
+router.post(
+  '/topicos', 
+  authMiddleware,
+  authorizeRole(['adm','professor']),
+  async (req, res) => {
+    uploadTopico.single('file')(req, res, async(err) => {
+      if (err) {
+        if (req.pastaId) {
+          const pastaPath = path.join(process.env.FILE_PATH, req.pastaId);
 
-    if (!dadosTopico.id_modulo || !dadosTopico.nome_topico) {
-      return res.status(400).json({ error: 'Campos obrigatórios estão ausentes' });
+          if (fs.existsSync(pastaPath)) {
+            fs.rmSync(pastaPath, { recursive: true, force: true });
+          }
+        }
+
+        if (err instanceof multer.MulterError) {
+
+          if (err.code === 'LIMIT_FILE_SIZE') {
+            return res.status(400).json({
+              error: 'O arquivo excede o tamanho máximo permitido (10MB).'
+            });
+          }
+
+          return res.status(400).json({ error: err.message });
+        }
+
+      return res.status(500).json({ error: 'Erro no upload do arquivo.' });
     }
-    const novoTopico = await topicoService.criarTopico(dadosTopico);
-    console.log(dadosTopico)
-    res.status(201).json(novoTopico);
-  } catch (error) {
-    console.error('Erro ao criar tópico:', error);
-    res.status(400).json({ error: error.message });
-  }
-});
+    try {
+      const dadosTopico = req.body;
+
+      dadosTopico.videoUrls = JSON.parse(dadosTopico.videoUrls || '[]');
+      dadosTopico.saibaMais = JSON.parse(dadosTopico.saibaMais || '[]');
+      dadosTopico.exercicios = JSON.parse(dadosTopico.exercicios || '[]');
+
+      if (!dadosTopico.id_modulo || !dadosTopico.nome_topico) {
+        return res.status(400).json({ error: 'Campos obrigatórios estão ausentes' });
+      }
+
+      let caminhoArquivo = null;
+
+      if (req.file){
+        if (!validarPDF(req.file.path)){
+          fs.unlinkSync(req.file.path);
+          return res.status(400).json({ error: 'Arquivo inválido'})
+        }
+
+        caminhoArquivo = path.join(req.pastaId, req.file.filename);
+
+      }
+
+      const novoTopico = await topicoService.criarTopico({...dadosTopico, ebookUrlGeral: caminhoArquivo});
+      res.status(201).json(novoTopico);
+    } catch (error) {
+      console.error('Erro ao criar tópico:', error);
+      // rollback
+        if (req.file?.path) {
+          try {
+            fs.unlinkSync(req.file.path);
+          } catch (e) {}
+        }
+      res.status(400).json({ error: error.message });
+    }
+  })  
+ }
+);
 
 /**
  * @swagger
@@ -123,22 +234,96 @@ router.post('/topicos', authMiddleware,authorizeRole(['adm','professor']), async
  *       500:
  *         description: Erro ao editar tópico
  */
-router.put('/topico/:id', authMiddleware,authorizeRole(['adm','professor']), async (req, res) => {
-  try {
-    const { id } = req.params;
-    const dadosAtualizados = req.body;
+router.put(
+  '/topico/:id', 
+  authMiddleware,
+  authorizeRole(['adm','professor']), 
+  async (req, res) => {
+    uploadTopico.single('file')(req, res, async(err) => {
+      if (err) {
+         // limpa arquivo temporário se existir
+        if (req.file?.path && fs.existsSync(req.file.path)) {
+          fs.unlinkSync(req.file.path);
+        }
 
-    const topico = await topicoService.editarTopico(id, dadosAtualizados, req.user);
+        if (err instanceof multer.MulterError) {
 
-    if (!topico) {
-      return res.status(404).json({ error: 'Tópico não encontrado' });
+          if (err.code === 'LIMIT_FILE_SIZE') {
+            return res.status(400).json({
+              error: 'O arquivo excede o tamanho máximo permitido (10MB).'
+            });
+          }
+
+          return res.status(400).json({ error: err.message });
+        }
+
+      return res.status(500).json({ error: 'Erro no upload do arquivo.' });
     }
+    try {
+      const { id } = req.params;
 
-    res.status(200).json(topico);
-  } catch (error) {
-    console.error('Erro ao editar tópico:', error);
-    res.status(500).json({ error: error.message });
-  }
+      const videoUrls = JSON.parse(req.body.videoUrls || '[]');
+      const saibaMais = JSON.parse(req.body.saibaMais || '[]');
+      const exercicios = JSON.parse(req.body.exercicios || '[]');
+
+      const dadosAtualizados = {
+          ...req.body,
+          videoUrls,
+          saibaMais,
+          exercicios
+      };
+
+      const topicoAtual = await topicoService.obterTopicoPorId(id, req.user);
+
+      if (!topicoAtual) {
+        return res.status(404).json({ error: 'Tópico não encontrado' });
+      }
+
+      let caminhoArquivo = topicoAtual.ebookUrlGeral;
+
+      if (req.file){
+        
+        if (!validarPDF(req.file.path)){
+          fs.unlinkSync(req.file.path)
+          return res.status(400).json({ error: 'Arquivo inválido'})
+        }
+
+        // caminho relativo novo
+        caminhoArquivo = path.join(req.pastaId, req.file.filename);
+
+        // deletar arquivo antigo
+        if (topicoAtual.ebookUrlGeral) {
+          const caminhoAntigo = path.join(process.env.FILE_PATH, topicoAtual.ebookUrlGeral);
+
+          if (fs.existsSync(caminhoAntigo)){
+            fs.unlinkSync(caminhoAntigo)
+          }
+        }
+      }
+
+      const topico = await topicoService.editarTopico(id, {
+            ...dadosAtualizados,
+            ebookUrlGeral: caminhoArquivo
+      }, req.user);
+
+      if (!topico) {
+        return res.status(404).json({ error: 'Tópico não encontrado' });
+      }
+
+      res.status(200).json(topico);
+    } catch (error) {
+      console.error('Erro ao editar tópico:', error);
+
+      if (req.file?.path) {
+          try {
+            fs.unlinkSync(req.file.path);
+          } catch (e) {}
+      }
+
+        res.status(500).json({ error: error.message });
+      }
+    }
+  )
 });
 
 /**
@@ -177,8 +362,24 @@ router.delete('/topico/:id', authMiddleware,authorizeRole(['adm','professor']), 
     const { id } = req.params;
     const { idAdm, senhaAdm } = req.query;
 
+    const topico = await topicoService.obterTopicoPorId(id, req.user);
+
+    if (!topico) {
+      return res.status(404).json({ error: 'Tópico não encontrado' });
+    }
+
+    const caminhoArquivo = topico.ebookUrlGeral;
+
     await topicoService.excluirTopico(id, idAdm, senhaAdm);
-    console.log("Teste")
+
+    if (caminhoArquivo) {
+      const caminhoCompleto = path.join(process.env.FILE_PATH, caminhoArquivo);
+
+      if (fs.existsSync(caminhoCompleto)) {
+        fs.unlinkSync(caminhoCompleto);
+      }
+    }
+    
     res.status(200).json({ message: 'Tópico excluído com sucesso' });
   } catch (error) {
     console.error('Erro ao excluir tópico:', error);
@@ -221,6 +422,8 @@ router.get(
         return res.status(404).json({ error: 'Tópico não encontrado' });
       }
 
+      topico.ebookUrlGeral = montarUrlArquivo(topico.ebookUrlGeral);
+      console.log(topico)
       return res.status(200).json(topico);
     } catch (error) {
       console.error('Erro ao obter tópico:', error);

@@ -3,13 +3,14 @@ const moduloService = require("../services/modulo");
 const topicoService = require("../services/topico");
 const router = express.Router();
 const authMiddleware = require("../middleware/auth");
-const multer = require("multer");
+
 const path = require("path");
 const authorizeRole = require("../middleware/authorizeRole");
 const fs = require('fs')
+const { validarPDF } = require('../utils/validarPDF');
 
-
-const upload = multer({ storage: multer.memoryStorage() });
+const { montarUrlArquivo } = require('../utils/montarURL')
+const upload = require('../config/upload')
 
 /**
  * @swagger
@@ -46,25 +47,61 @@ router.post(
   "/modulo",
   authMiddleware,
   authorizeRole(["adm", "professor"]),
-  async (req, res) => {
-    const { nome_modulo, video_inicial, ebookUrlGeral, nome_url, usuario_id, filesDoModulo } =
-      req.body;
+  (req, res) => {
+    upload.single("file")(req, res, async (err) => {
+      if (err) {
 
-    try {
-      const modulo = await moduloService.criarModulo({
-        nome_modulo,
-        video_inicial,
-        ebookUrlGeral,
-        nome_url,
-        usuario_id,
-        filesDoModulo
-      });
+        // limpar pasta se existir
+        if (req.pastaId){
+          const pastaPath = path.join(process.env.FILE_PATH, req.pastaId);
 
-      res.status(201).json({ modulo });
-    } catch (error) {
-      console.error("Erro ao criar módulo:", error);
-      res.status(400).json({ error: error.message });
-    }
+          if (fs.existsSync(pastaPath)){
+            fs.rmSync(pastaPath, { recursive: true, force: true });
+          }
+        }
+
+        // tratamento
+        if (err.code === 'LIMIT_FILE_SIZE'){
+          return res.status(400).json({ error: 'O arquivo excede o tamanho máximo permitido (10MB)'})
+        }
+
+        return res.status(400).json({ error: err.message });
+      }
+
+      try {
+        const { nome_modulo, video_inicial, nome_url, usuario_id } = req.body;
+
+        if (!req.file) {
+          return res.status(400).json({ error: "Arquivo é obrigatório" });
+        }
+
+        if (!validarPDF(req.file.path)) {
+          fs.unlinkSync(req.file.path);
+          return res.status(400).json({ error: "Arquivo inválido" });
+        }
+
+        const caminhoRelativo = path.join(req.pastaId, req.file.filename);
+
+        const modulo = await moduloService.criarModulo({
+          nome_modulo,
+          video_inicial,
+          ebookUrlGeral: caminhoRelativo,
+          nome_url,
+          usuario_id,
+          filesDoModulo: req.pastaId
+        });
+
+        res.status(201).json({ modulo });
+
+      } catch (error) {
+        if (req.file?.path) {
+          fs.unlinkSync(req.file.path);
+        }
+
+        console.error("Erro ao criar módulo:", error);
+        res.status(400).json({ error: error.message });
+      }
+    });
   }
 );
 
@@ -96,7 +133,12 @@ router.get(
       const modulos = await moduloService.listarModulosPaginados(page, quantidadeItens);
       const infoModulos = await moduloService.infoPaginacaoModulos(quantidadeItens);
       
-      res.status(200).json({modulos, infoModulos });
+      const modulosFormatados = modulos.map(modulo => ({
+      ...modulo.dataValues,
+      ebookUrlGeral: montarUrlArquivo(modulo.ebookUrlGeral)
+    }));
+
+      res.status(200).json({ modulos: modulosFormatados, infoModulos });
     } catch (error) {
       console.error("Erro ao listar módulos:", error);
       res.status(500).json({ error: "Erro ao listar módulos" });
@@ -136,13 +178,89 @@ router.put(
   "/modulos/:id",
   authMiddleware,
   authorizeRole(["adm", "professor"]),
+  
   async (req, res) => {
+    upload.single("file")(req, res, async (err) => {
+      if (err) {
+        // limpa pasta temporária se existir
+        if (req.pastaId) {
+          const pastaPath = path.join(process.env.FILE_PATH, req.pastaId);
+
+          if (fs.existsSync(pastaPath)) {
+            fs.rmSync(pastaPath, { recursive: true, force: true });
+          }
+        }
+
+        if (err.code === 'LIMIT_FILE_SIZE') {
+          return res.status(400).json({
+            error: 'O arquivo excede o tamanho máximo permitido (10MB).'
+          });
+        }
+
+        return res.status(400).json({ error: err.message });
+
+      }
+
     try {
       const { id } = req.params;
       const dadosAtualizados = req.body;
+
+      const moduloAtual = await moduloService.obterModuloPorId(id, req.user);
+
+      if (!moduloAtual) {
+        return res.status(404).json({ error: "Módulo não encontrado" });
+      }
+
+      // caminho do arquivo antigo, mantém se não tiver novo arquivo
+      let caminhoArquivo = moduloAtual.ebookUrlGeral;
+
+
+      // se o arquivo existir
+      if (req.file){
+        // valida se o formato é PDF 
+        if (!validarPDF(req.file.path)){
+          fs.unlinkSync(req.file.path);
+          return res.status(400).json({ error: "Arquivo inválido" });
+        }
+
+        // armazena nome único da pasta
+        const pastaId = moduloAtual.filesDoModulo;
+
+        // caminho em que a ficará o novo arquivo
+        const destinoFinal = path.join(
+          process.env.FILE_PATH,
+          pastaId,
+          req.file.filename
+        );
+
+        // move o arquivo para a pasta correta
+        fs.renameSync(req.file.path, destinoFinal)
+
+        // remove pasta temporária criada pelo multer
+        const pastaTemp = path.dirname(req.file.path);
+        if (fs.existsSync(pastaTemp)) {
+          fs.rmSync(pastaTemp, { recursive: true, force: true });
+        }
+
+        const novoCaminhoRelativo = path.join(pastaId, req.file.filename);
+
+        if (moduloAtual.ebookUrlGeral){
+          const caminhoAntigo = path.join(process.env.FILE_PATH, moduloAtual.ebookUrlGeral)
+
+          if (fs.existsSync(caminhoAntigo)) {
+            fs.unlinkSync(caminhoAntigo);
+          }
+        }
+
+        caminhoArquivo = novoCaminhoRelativo;
+      }
+
       const moduloAtualizado = await moduloService.atualizarModulo(
         id,
-        dadosAtualizados,
+        {
+          ...dadosAtualizados,
+          ebookUrlGeral: caminhoArquivo
+        },
         req.user
       );
       if (!moduloAtualizado) {
@@ -153,6 +271,7 @@ router.put(
       console.error("Erro ao atualizar módulo:", error);
       res.status(500).json({ error: "Erro ao atualizar módulo" });
     }
+  })
   }
 );
 
@@ -195,12 +314,24 @@ router.delete(
       const { id } = req.params;
       const { idAdm, senhaAdm } = req.query;
 
+      const modulo = await moduloService.obterModuloPorId(id, req.user);
+
+      if (!modulo){
+        return res.status(404).json({ error: "Módulo não encontrado"});
+      }
+
+      const pastaPath = path.join(process.env.FILE_PATH, modulo.filesDoModulo);
+
       await moduloService.deletarModulo(idAdm, senhaAdm, id);
+    
+      if (fs.existsSync(pastaPath)){
+        fs.rmSync(pastaPath, { recursive: true, force: true})
+      }
     
 
       res.status(200).json({ message: "Módulo deletado com sucesso" });
     } catch (error) {
-      console.log(error, 'teste de erro')
+      console.log(error)
       res.status(error.status || 500).json({ error: error.message || "Erro ao deletar módulo" });
     }
   }
@@ -299,6 +430,14 @@ router.get(
       if (!modulo) {
         return res.status(404).json({ error: "Módulo não encontrado" });
       }
+
+      modulo.ebookUrlGeral = montarUrlArquivo(modulo.ebookUrlGeral);
+      modulo.Topicos.map(topico => {
+        topico.ebookUrlGeral = montarUrlArquivo(topico.ebookUrlGeral)
+      })
+
+      console.log('teste' ,modulo)
+
       res.status(200).json(modulo);
     } catch (error) {
       console.error("Erro ao buscar módulo:", error);
@@ -377,33 +516,33 @@ router.get(
  *       500:
  *         description: Erro ao salvar arquivo
  */
-router.post(
-  "/modulos/upload",
-  authMiddleware,
-  upload.single("file"),
-  authorizeRole(["adm", "professor"]),
-  async (req, res) => {
-    try {
-      const nomeModulo = req.body.nomeModulo || 'sem-nome-modulo';
-      const uploadPath = path.join(process.env.FILE_PATH, nomeModulo) 
+// router.post(
+//   "/modulos/upload",
+//   authMiddleware,
+//   upload.single("file"),
+//   authorizeRole(["adm", "professor"]),
+//   async (req, res) => {
+//     try {
+//       const nomeModulo = req.body.nomeModulo || 'sem-nome-modulo';
+//       const uploadPath = path.join(process.env.FILE_PATH, nomeModulo) 
 
-      console.log(nomeModulo)
-      console.log(uploadPath)
+//       console.log(nomeModulo)
+//       console.log(uploadPath)
 
-      fs.mkdirSync(uploadPath, { recursive: true });
-      fs.writeFileSync(path.join(uploadPath, req.file.originalname), req.file.buffer);
+//       fs.mkdirSync(uploadPath, { recursive: true });
+//       fs.writeFileSync(path.join(uploadPath, req.file.originalname), req.file.buffer);
 
-      res.status(200).json({
-        message: "Arquivo salvo com sucesso",
-        filePath: path.join(process.env.FILE_PATH, nomeModulo, req.file.originalname),
-        fileName: req.file.originalname,
-      });
-    } catch (error) {
-      console.error("Erro ao salvar arquivo:", error);
-      res.status(500).json({ error: "Arquivo não foi salvo" });
-    }
-  }
-);
+//       res.status(200).json({
+//         message: "Arquivo salvo com sucesso",
+//         filePath: path.join(process.env.FILE_PATH, nomeModulo, req.file.originalname),
+//         fileName: req.file.originalname,
+//       });
+//     } catch (error) {
+//       console.error("Erro ao salvar arquivo:", error);
+//       res.status(500).json({ error: "Arquivo não foi salvo" });
+//     }
+//   }
+// );
 
 /**
  * @swagger
