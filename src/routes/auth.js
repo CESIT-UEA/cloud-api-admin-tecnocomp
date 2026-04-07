@@ -32,7 +32,7 @@ router.post('/login-google', async (req, res)=> {
       { expiresIn: '1h' }
     );
 
-    const refreshToken = jwt.sign({ id: usuario.id }, process.env.REFRESH_SECRET_KEY, { expiresIn: '7d' });
+    const refreshToken = jwt.sign({ id: usuario.id, tipo: usuario.tipo, username: usuario.username, email: usuario.email, url_foto: usuario.url_foto }, process.env.REFRESH_SECRET_KEY, { expiresIn: '7d' });
 
     res.json({ accessToken, refreshToken });
 
@@ -149,7 +149,7 @@ router.post('/login', async (req, res) => {
       { expiresIn: '1h' }
     );
 
-    const refreshToken = jwt.sign({ id: usuario.id }, process.env.REFRESH_SECRET_KEY, { expiresIn: '7d' });
+    const refreshToken = jwt.sign({ id: usuario.id, tipo: usuario.tipo, username: usuario.username, email: usuario.email, url_foto: usuario.url_foto }, process.env.REFRESH_SECRET_KEY, { expiresIn: '7d' });
 
     res.json({ accessToken, refreshToken });
   } catch (error) {
@@ -184,7 +184,7 @@ router.post('/login', async (req, res) => {
  *       403:
  *         description: Token não fornecido
  */
-router.post('/refresh-token', (req, res) => {
+router.post('/refresh-token', async (req, res) => {
   const { refreshToken } = req.body;
 
   if (!refreshToken) {
@@ -193,8 +193,14 @@ router.post('/refresh-token', (req, res) => {
 
   try {
     const decoded = jwt.verify(refreshToken, process.env.REFRESH_SECRET_KEY);
+
+    const usuario = await Usuario.findByPk(decoded.id);
+
+    if (!usuario) {
+      return res.status(404).json({ message: 'User not found' });
+    }
     const newAccessToken = jwt.sign(
-      { id: decoded.id },
+      { id: usuario.id, tipo: usuario.tipo, username: usuario.username, email: usuario.email, url_foto: usuario.url_foto },
       process.env.JWT_SECRET,
       { expiresIn: '1h' }
     );
