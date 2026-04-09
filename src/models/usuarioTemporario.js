@@ -31,6 +31,9 @@ const UsuarioTemporario = sequelize.define('usuarioTemporario', {
   },
   expiresAt: {
     type: DataTypes.DATE
+  },
+  lastSentAt: {
+    type: DataTypes.DATE
   }
 }, {
     tableName: 'usuariotemporario',

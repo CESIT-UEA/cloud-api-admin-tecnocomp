@@ -1,5 +1,5 @@
 const express = require('express');
-const { enviarCodigoEmail } = require('../utils/validarEmail');
+const { enviarCodigoEmail, gerarCodigoEmail } = require('../utils/validarEmail');
 const { createUser } = require('../services/usuario');
 const { Usuario, UsuarioTemporario } = require('../models');
 const router = express.Router();
@@ -18,7 +18,15 @@ router.post('/autoRegister', async (req, res)=>{
     const {isUserTemporario, codigoEmail} = await createUser(nome, email, senha, 'professor', true)
     
     if (isUserTemporario){
-        enviarCodigoEmail(email, codigoEmail)
+        try {
+          await enviarCodigoEmail(email, codigoEmail);
+        } catch (err) {
+          await UsuarioTemporario.destroy({ where: { email } });
+          
+          return res.status(500).json({
+            message: 'Erro ao enviar email'
+          });
+      }
     }
     
     res.status(200).json({ message: `Código de verificação enviado por E-mail!`, sucess: true });
@@ -57,5 +65,58 @@ router.post('/valida_autoRegister', async (req, res)=>{
   }
 
 })
+
+
+router.post('/reenviar_codigo', async (req, res) => {
+  try {
+
+    const { email } = req.body;
+
+    if (!email){
+      return res.status(400).json({ message: 'Email é obrigatório!' })
+    }
+
+    const temporario = await UsuarioTemporario.findOne({ where: { email } });
+
+    if (!temporario) {
+      return res.status(400).json({ message: 'Nenhum cadastro pendente encontrado' });
+    }
+
+    const now = Date.now();
+    const lastSent = temporario.lastSentAt ? new Date(temporario.lastSentAt.replace(' ', 'T') + 'Z').getTime() : null;
+    const diff = now - lastSent;
+    
+    if (temporario.lastSentAt && diff < 60000){
+      return res.status(429).json({ message: `Aguarde ${Math.ceil((60000 - diff)/1000)} segundos para reenviar o código` })
+    }
+
+    const codigoEmail = gerarCodigoEmail()
+    const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
+
+     try {
+      await enviarCodigoEmail(email, codigoEmail);
+    } catch (err) {
+      return res.status(500).json({
+        message: 'Erro ao enviar email'
+      });
+    }
+
+    await UsuarioTemporario.update(
+      {
+        verificationCode: codigoEmail,
+        expiresAt: expiresAt,
+        lastSentAt: new Date() 
+      },
+      { where: { email } }
+    )
+
+    res.status(200).json({ message: 'Novo código enviado com sucesso!' });
+
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Erro ao reenviar código' });
+  }
+})
+
 
 module.exports = router;

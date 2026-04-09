@@ -43,7 +43,7 @@ async function createUser(nome, email, senha, tipo, isUserTemporario){
         const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutos
 
         await UsuarioTemporario.create(
-          { username: nome, email, senha: hashedPassword, verificationCode: codigoEmail, tipo, expiresAt}
+          { username: nome, email, senha: hashedPassword, verificationCode: codigoEmail, tipo, expiresAt, lastSentAt: new Date()}
         )
         return {isUserTemporario, codigoEmail}
       }
