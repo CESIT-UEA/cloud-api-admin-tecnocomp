@@ -54,6 +54,7 @@ async function clonarTemplate(id, usuarioId) {
       usuario_id: usuarioId,
       template: false,
       uuid,
+      filesDoModulo: template.filesDoModulo
     });
 
     for (const topico of topicosOriginais) {
