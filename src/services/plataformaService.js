@@ -115,19 +115,13 @@ async function atualizarPlataforma(id, dadosAtualizados, user) {
 }
 
 
-async function deletarPlataforma(idUsuario, senhaAdm, idExcluir) {
+async function deletarPlataforma(idUsuario, idExcluir) {
   try {
 
     const admin = await Usuario.findOne({ where: { id: idUsuario, tipo: "adm" } });
 
     if (admin) {
-      const senhaCorreta = await bcrypt.compare(senhaAdm, admin.senha);
-      if (!senhaCorreta) {
-        const error = new Error("Senha incorreta");
-        error.status = 401;
-        throw error;
-      }
-
+      
       const plataforma = await PlataformaRegistro.findByPk(idExcluir);
       if (!plataforma) {
         const error = new Error("Plataforma não encontrada");

@@ -152,20 +152,11 @@ async function atualizarModulo(id, dadosAtualizados, user) {
   }
 }
 
-async function deletarModulo(idAdm, senhaAdm, idExcluir) {
+async function deletarModulo(idUsuario, idExcluir) {
   try {
-    const admin = await Usuario.findOne({ where: { id: idAdm, tipo: "adm" } });
+    const admin = await Usuario.findOne({ where: { id: idUsuario, tipo: "adm" } });
 
     if (admin) {
-      
-      const senhaCorreta = await bcrypt.compare(senhaAdm, admin.senha)
-
-      if (!senhaCorreta) {
-        const error = new Error("Senha incorreta")
-        error.status = 401
-        
-        throw error
-      }
 
       const modulo = await Modulo.findByPk(idExcluir, {
         include: [{ model: Topico, as: "Topicos" }],
@@ -181,7 +172,7 @@ async function deletarModulo(idAdm, senhaAdm, idExcluir) {
       return true;
     } else {
       const verificaModulo = await usuarioService.verificaModuloEhDoUsuario(
-        idAdm,
+        idUsuario,
         idExcluir
       );
         if (!verificaModulo) {

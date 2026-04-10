@@ -3,6 +3,8 @@ const plataformaService = require('../services/plataformaService');
 const authMiddleware = require('../middleware/auth');
 const router = express.Router();
 const authorizeRole = require('../middleware/authorizeRole');
+const { PlataformaRegistro } = require('../models');
+const { validarConfirmacao } = require('../utils/validarConfirmacao');
 
 
 /**
@@ -190,9 +192,22 @@ router.put('/plataforma/:id', authMiddleware,authorizeRole(['adm','professor']),
 router.delete('/plataforma/:id', authMiddleware,authorizeRole(['adm','professor']), async (req, res) => {
   try { 
     const { id } = req.params;
-    const { idAdm, senhaAdm } = req.query;
+    const { idUsuario, palavraConfirmacao } = req.query;
 
-    await plataformaService.deletarPlataforma(idAdm, senhaAdm, id);
+    const plataforma = await plataformaService.obterPlataformaPorId(id, req.user)
+
+    if (!plataforma){
+      return res.status(404).json({ error: "Plataforma não encontrada"})
+    }
+    console.log('palavraConfirmacao', palavraConfirmacao)
+    console.log('palavraReal', plataforma.plataformaNome)
+    const isValido = validarConfirmacao(palavraConfirmacao, plataforma.plataformaNome)
+
+    if (!isValido){
+      return res.status(400).json({ error: 'Confirmação inválida'})
+    }
+
+    await plataformaService.deletarPlataforma(idUsuario, id);
     
     res.status(200).json({ message: 'Plataforma deletada com sucesso.' });
   } catch (error) {

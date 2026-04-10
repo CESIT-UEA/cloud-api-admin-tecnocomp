@@ -10,7 +10,8 @@ const fs = require('fs')
 const { validarPDF } = require('../utils/validarPDF');
 
 const { montarUrlArquivo } = require('../utils/montarURL')
-const upload = require('../config/upload')
+const upload = require('../config/upload');
+const { validarConfirmacao } = require("../utils/validarConfirmacao");
 
 /**
  * @swagger
@@ -311,19 +312,28 @@ router.delete(
   authorizeRole(["adm", "professor"]),
   async (req, res) => {
     try {
+      // id do módulo
       const { id } = req.params;
-      const { idAdm, senhaAdm } = req.query;
+      const { idUsuario, palavraConfirmacao } = req.query;
 
+      
       const modulo = await moduloService.obterModuloPorId(id, req.user);
 
       if (!modulo){
         return res.status(404).json({ error: "Módulo não encontrado"});
       }
 
+      const isValido = validarConfirmacao(palavraConfirmacao, modulo.nome_modulo);
+
+      if (!isValido) {
+        return res.status(400).json({ error: 'Confirmação inválida'})
+      }
+
       const pastaPath = path.join(process.env.FILE_PATH, modulo.filesDoModulo);
 
-      await moduloService.deletarModulo(idAdm, senhaAdm, id);
-    
+      // await moduloService.deletarModulo(idAdm, senhaAdm, id);
+      await moduloService.deletarModulo(idUsuario, id)
+
       if (fs.existsSync(pastaPath)){
         fs.rmSync(pastaPath, { recursive: true, force: true})
       }
