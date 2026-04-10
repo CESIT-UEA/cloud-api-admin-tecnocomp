@@ -34,6 +34,10 @@ const Usuario = sequelize.define('Usuario', {
   },
   password_reset_expires: {
     type: DataTypes.DATE
+  },
+  provedor: {
+    type: DataTypes.ENUM('local', 'google'),
+    defaultValue: 'local'
   }
 }, {
   sequelize,

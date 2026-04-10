@@ -27,7 +27,7 @@ router.post('/login-google', async (req, res)=> {
     await syncFotoDePerfil(usuario, userInfo)
 
     const accessToken = jwt.sign(
-      { id: usuario.id, tipo: usuario.tipo, username: usuario.username, email: usuario.email, url_foto: usuario.url_foto },
+      { id: usuario.id, tipo: usuario.tipo, username: usuario.username, email: usuario.email, url_foto: usuario.url_foto, provedor: usuario.provedor },
       process.env.JWT_SECRET,
       { expiresIn: '1h' }
     );
@@ -144,7 +144,7 @@ router.post('/login', async (req, res) => {
     }
 
     const accessToken = jwt.sign(
-      { id: usuario.id, tipo: usuario.tipo, username: usuario.username, email: usuario.email, url_foto: usuario.url_foto },
+      { id: usuario.id, tipo: usuario.tipo, username: usuario.username, email: usuario.email, url_foto: usuario.url_foto, provedor: usuario.provedor },
       process.env.JWT_SECRET,
       { expiresIn: '1h' }
     );

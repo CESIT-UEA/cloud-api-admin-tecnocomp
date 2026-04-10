@@ -34,6 +34,10 @@ const UsuarioTemporario = sequelize.define('usuarioTemporario', {
   },
   lastSentAt: {
     type: DataTypes.DATE
+  },
+  provedor: {
+    type: DataTypes.ENUM('local', 'google'),
+    defaultValue: 'local'
   }
 }, {
     tableName: 'usuariotemporario',

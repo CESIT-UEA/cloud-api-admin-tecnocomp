@@ -240,12 +240,15 @@ router.patch('/users/:id/self', authMiddleware,authorizeRole(['adm','professor']
 
     const resultado = await userService.atualizarPerfil(id, { senhaAtual, novaSenha, username, email });
 
-    console.log(resultado)
     if (!resultado.sucesso) {
-      return res.status(401).json({ error: "Senha incorreta ou Não Autorizado" });
-    }
+        return res.status(resultado.status).json({
+          error: resultado.mensagem
+        });
+      }
 
-    res.json({ message: resultado.mensagem });
+      return res.status(resultado.status).json({
+        message: resultado.mensagem
+      });
   } catch (error) {
     console.error('Erro ao atualizar perfil:', error);
     res.status(500).json({ error: 'Erro ao atualizar perfil.' });

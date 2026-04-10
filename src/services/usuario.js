@@ -43,7 +43,16 @@ async function createUser(nome, email, senha, tipo, isUserTemporario){
         const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutos
 
         await UsuarioTemporario.create(
-          { username: nome, email, senha: hashedPassword, verificationCode: codigoEmail, tipo, expiresAt, lastSentAt: new Date()}
+          { 
+            username: nome, 
+            email, 
+            senha: hashedPassword, 
+            verificationCode: codigoEmail, 
+            tipo, 
+            expiresAt, 
+            lastSentAt: new Date(),
+            provedor: 'local'
+          }
         )
         return {isUserTemporario, codigoEmail}
       }
@@ -52,11 +61,11 @@ async function createUser(nome, email, senha, tipo, isUserTemporario){
       const verificaUsuarioTemporario = await UsuarioTemporario.findOne({where: {email}})
       if (verificaUsuarioTemporario){
           const usuarioTemporario = verificaUsuarioTemporario.dataValues 
-          await Usuario.create({ username: nome, email, senha: usuarioTemporario.senha, tipo});
+          await Usuario.create({ username: nome, email, senha: usuarioTemporario.senha, tipo, provedor: 'local'});
           return
       }
 
-      await Usuario.create({ username: nome, email, senha: hashedPassword, tipo});
+      await Usuario.create({ username: nome, email, senha: hashedPassword, tipo, provedor: 'local'});
       return true
 
     }catch(error){
@@ -116,18 +125,73 @@ async function atualizarPerfil(id, { senhaAtual, novaSenha, username, email }) {
       };
     }
 
-    const senhaValida = await bcrypt.compare(senhaAtual, usuario.senha);
-    if (!senhaValida) {
+    // usuário google sem senha
+    if (usuario.provedor === 'google' && !usuario.senha){
+      // se quiser criar senha
+      if (novaSenha){
+        usuario.senha = await bcrypt.hash(novaSenha, 10);
+        usuario.provedor = 'local' // pode logar com senha agora
+      }
+
+      // atualiza dados básicos
+      if (username) usuario.username = username;
+
+      if (email && email !== usuario.email){
+        const emailExiste = await Usuario.findOne({ where: { email }})
+        if (emailExiste){
+          return {
+            sucesso: false,
+            status: 400,
+            mensagem: 'Email já está em uso.'
+          }
+        }
+        usuario.email = email;
+      }
+
+      await usuario.save();
+
       return {
-        sucesso: false,
-        status: 401,
-        mensagem: "Senha atual incorreta.",
-      };
+        sucesso: true,
+        status: 200,
+        mensagem: novaSenha ? 'Senha criada com sucesso' : 'Perfil atualizado com sucesso'
+      }
     }
 
+
+    // usuario com senha (local ou google com senha)
+    if (novaSenha) {
+      if(!senhaAtual){
+        return {
+          sucesso: false,
+          status: 400,
+          mensagem: 'Senha atual é obrigatória.'
+        }
+      }
+      const senhaValida = await bcrypt.compare(senhaAtual, usuario.senha);
+      if (!senhaValida) {
+        return {
+          sucesso: false,
+          status: 401,
+          mensagem: "Senha atual incorreta.",
+        };
+      }
+
+      usuario.senha = await bcrypt.hash(novaSenha, 10);
+    }
+
+    // atualiza dados básicos
     if (username) usuario.username = username;
-    if (email) usuario.email = email;
-    if (novaSenha) usuario.senha = await bcrypt.hash(novaSenha, 10);
+    if (email && email !== usuario.email){
+        const emailExiste = await Usuario.findOne({ where: { email }})
+        if (emailExiste){
+          return {
+            sucesso: false,
+            status: 400,
+            mensagem: 'Email já está em uso.'
+          }
+        }
+        usuario.email = email;
+      }
 
     await usuario.save();
 
@@ -230,7 +294,8 @@ async function createUserWithGoogle(userInfo){
         username,
         email,
         senha: null,
-        tipo: 'professor'
+        tipo: 'professor',
+        provedor: 'google'
       })
       return usuario
     } catch (error) {
