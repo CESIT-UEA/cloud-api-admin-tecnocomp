@@ -4,6 +4,7 @@ const userService = require("../services/usuario");
 const moduloService = require("../services/modulo");
 const authMiddleware = require('../middleware/auth');
 const authorizeRole = require('../middleware/authorizeRole');
+const { validarConfirmacao } = require("../utils/validarConfirmacao");
 
 /**
  * @swagger
@@ -167,8 +168,21 @@ router.put("/users/:id", authMiddleware,authorizeRole(['adm']), async (req, res)
  */
 router.delete("/users", authMiddleware,authorizeRole(['adm']), async (req, res) => {
   try {
-    const { idAdm, senhaAdm, idExcluir } = req.body;
-    const result = await userService.deleteUser(idAdm, senhaAdm, idExcluir);
+    const { idAdm, palavraConfirmacao, idExcluir } = req.body;
+    
+    const usuarioASerExcluido = await userService.getDadosUserById(idExcluir);
+
+    if (!usuarioASerExcluido){
+      return res.status(404).json({ error: 'Usuário não encontrado!' });
+    }
+
+    const isValid = validarConfirmacao(palavraConfirmacao, usuarioASerExcluido.username)
+    
+    if (!isValid){
+      return res.status(400).json({ error: 'Confirmação inválida' })
+    }
+
+    const result = await userService.deleteUser(idAdm, idExcluir);
 
     if (result === false) {
       return res.status(403).json({ message: "Permissão negada ou dados inválidos." });

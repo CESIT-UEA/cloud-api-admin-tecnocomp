@@ -85,10 +85,10 @@ async function updateUser(idAdm, senhaAdm, username, email, tipo, idEditar) {
   }
 }
 
-async function deleteUser(idAdm, senhaAdm, idExcluir) {
+async function deleteUser(idAdm, idExcluir) {
   try {
     const admin = await Usuario.findOne({ where: { id: idAdm, tipo: "adm" } });
-    if (!admin || !(await bcrypt.compare(senhaAdm, admin.senha))) {
+    if (!admin) {
       return false;
     }
 
