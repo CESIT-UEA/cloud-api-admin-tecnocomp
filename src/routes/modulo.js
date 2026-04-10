@@ -12,6 +12,7 @@ const { validarPDF } = require('../utils/validarPDF');
 const { montarUrlArquivo } = require('../utils/montarURL')
 const upload = require('../config/upload');
 const { validarConfirmacao } = require("../utils/validarConfirmacao");
+const { isYoutubeEmbed } = require('../utils/validarEmbedYt');
 
 /**
  * @swagger
@@ -72,13 +73,19 @@ router.post(
       try {
         const { nome_modulo, video_inicial, nome_url, usuario_id } = req.body;
 
+        const isEmbedYt = isYoutubeEmbed(video_inicial);
+
+        if (!isEmbedYt){
+          return res.status(400).json({ error: 'O link deve ser um link incorporado do YouTube (embed)' })
+        }
+
         if (!req.file) {
-          return res.status(400).json({ error: "Arquivo é obrigatório" });
+          return res.status(400).json({ error: 'Arquivo é obrigatório' });
         }
 
         if (!validarPDF(req.file.path)) {
           fs.unlinkSync(req.file.path);
-          return res.status(400).json({ error: "Arquivo inválido" });
+          return res.status(400).json({ error: 'Arquivo inválido' });
         }
 
         const caminhoRelativo = path.join(req.pastaId, req.file.filename);
@@ -205,6 +212,13 @@ router.put(
     try {
       const { id } = req.params;
       const dadosAtualizados = req.body;
+
+      if (dadosAtualizados.video_inicial){
+        const isEmbedYt = isYoutubeEmbed(dadosAtualizados.video_inicial);
+        if (!isEmbedYt){
+          return res.status(400).json({ error: 'O link deve ser um link incorporado do YouTube (embed)' })
+        }
+      }
 
       const moduloAtual = await moduloService.obterModuloPorId(id, req.user);
 
