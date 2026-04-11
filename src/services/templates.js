@@ -1,6 +1,7 @@
 const { Modulo, Topico } = require("../models");
 const { randomUUID } = require("crypto");
 const topicoService = require("../services/topico");
+const { criarReferencia, listarReferenciasPorModulo } = require('./referenciaModulo');
 
 async function listarTemplates() {
   try {
@@ -40,9 +41,6 @@ async function clonarTemplate(id, usuarioId) {
     }
 
     const topicosOriginais = await topicoService.obterTopicoCompletoPorModulo(id);
-    console.log(topicosOriginais, 'tópicos originais')
-
-    console.log(usuarioId, 'usuarioID')
 
     const uuid = randomUUID();
     const novoModulo = await Modulo.create({
@@ -57,6 +55,18 @@ async function clonarTemplate(id, usuarioId) {
       filesDoModulo: template.filesDoModulo
     });
 
+    const referenciasModulo = await listarReferenciasPorModulo(template.id)
+    
+    if (referenciasModulo){
+      referenciasModulo.map(async (referencia) => {
+        await criarReferencia({
+          descricao: referencia.dataValues.descricao,
+          link: referencia.dataValues.link,
+          modulo_id: novoModulo.id
+        })
+      })
+    }
+    
     for (const topico of topicosOriginais) {
       await topicoService.clonarTopicoCompleto(topico, novoModulo.id);
     }
