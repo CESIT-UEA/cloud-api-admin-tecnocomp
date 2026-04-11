@@ -110,11 +110,11 @@ async function criarTopico(dadosTopico) {
   }
 }
 
-async function excluirTopico(id, idAdm, senhaAdm) {
+async function excluirTopico(id, idUsuario) {
   const transaction = await sequelize.transaction();
 
   try {
-    const usuario = await Usuario.findByPk(idAdm);
+    const usuario = await Usuario.findByPk(idUsuario);
 
     if (!usuario) {
       throw new Error("Usuário não encontrado");
@@ -138,26 +138,16 @@ async function excluirTopico(id, idAdm, senhaAdm) {
       throw new Error("Tópico não encontrado");
     }
 
-    // Se for admin precisa validar senha
-    if (usuario.tipo === "adm") {
-      const senhaCorreta = await bcrypt.compare(senhaAdm, usuario.senha);
-
-      if (!senhaCorreta) {
-        throw new Error("Senha incorreta");
-      }
-    } 
-    // Se não for admin, verifica se é dono do tópico
-    else {
-      const verificaTopico = await usuarioService.verificaTopicoEhDoUsuario(
-        idAdm,
-        id
-      );
+    // se não for adm, verifica se o usuário é dono do tópico
+    if (usuario.tipo !== "adm"){
+      const verificaTopico = await usuarioService.verificaTopicoEhDoUsuario(idUsuario, id);
 
       if (!verificaTopico) {
         throw new Error("Sem permissão");
-      }
+      }  
     }
-
+    
+    
     // Exclui VideoUrls
     for (const video of topico.VideoUrls) {
       await video.destroy({ transaction });

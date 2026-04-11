@@ -10,6 +10,7 @@ const fs = require('fs');
 const crypto = require('crypto');
 const { validarPDF } = require('../utils/validarPDF');
 const { montarUrlArquivo } = require('../utils/montarURL');
+const { validarConfirmacao } = require('../utils/validarConfirmacao');
 
 const storageTopico = multer.diskStorage({
   destination: async (req, file, cb) => {
@@ -360,7 +361,7 @@ router.put(
 router.delete('/topico/:id', authMiddleware,authorizeRole(['adm','professor']), async (req, res) => {
   try {
     const { id } = req.params;
-    const { idAdm, senhaAdm } = req.query;
+    const { idUsuario, palavraConfirmacao } = req.query;
 
     const topico = await topicoService.obterTopicoPorId(id, req.user);
 
@@ -368,9 +369,15 @@ router.delete('/topico/:id', authMiddleware,authorizeRole(['adm','professor']), 
       return res.status(404).json({ error: 'Tópico não encontrado' });
     }
 
+    const isValido = validarConfirmacao(palavraConfirmacao, topico.nome_topico);
+
+    if (!isValido){
+      return res.status(400).json({ error: 'Confirmação inválida' })
+    }
+
     const caminhoArquivo = topico.ebookUrlGeral;
 
-    await topicoService.excluirTopico(id, idAdm, senhaAdm);
+    await topicoService.excluirTopico(id, idUsuario);
 
     if (caminhoArquivo) {
       const caminhoCompleto = path.join(process.env.FILE_PATH, caminhoArquivo);
