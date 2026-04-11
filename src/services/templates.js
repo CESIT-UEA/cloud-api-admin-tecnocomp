@@ -2,6 +2,7 @@ const { Modulo, Topico } = require("../models");
 const { randomUUID } = require("crypto");
 const topicoService = require("../services/topico");
 const { criarReferencia, listarReferenciasPorModulo } = require('./referenciaModulo');
+const { obterFichaPorModulo, clonarFichaTecnica } = require('./ficha-tecnica');
 
 async function listarTemplates() {
   try {
@@ -65,6 +66,12 @@ async function clonarTemplate(id, usuarioId) {
           modulo_id: novoModulo.id
         })
       })
+    }
+
+    const fichaTecnica = await obterFichaPorModulo(template.id);
+
+    if (fichaTecnica) {
+      await clonarFichaTecnica(novoModulo.id, template.id);
     }
     
     for (const topico of topicosOriginais) {
