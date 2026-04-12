@@ -15,7 +15,10 @@ async function criarPlataforma({
   customQuartenaria,
   customQuintenaria,
 }) {
+  let transaction;
   try {
+    transaction = await PlataformaRegistro.sequelize.transaction();
+
     const novaPlataforma = await PlataformaRegistro.create({
       plataformaUrl,
       plataformaNome,
@@ -27,10 +30,19 @@ async function criarPlataforma({
       customTerciaria: temaTipo === "customizado" ? customTerciaria : null,
       customQuartenaria: temaTipo === "customizado" ? customQuartenaria : null,
       customQuintenaria: temaTipo === "customizado" ? customQuintenaria : null,
-    });
+    },  { transaction });
+
+    await registerPlataformaLTI(
+      novaPlataforma.plataformaUrl,
+      novaPlataforma.plataformaNome,
+      novaPlataforma.idCliente
+    );
+
+    await transaction.commit();
 
     return novaPlataforma;
   } catch (error) {
+    if (transaction) await transaction.rollback();
     console.error("Erro ao criar plataforma:", error);
     throw new Error("Erro ao criar a plataforma");
   }
@@ -53,7 +65,7 @@ async function obterPlataformaPorId(id, user) {
   try {
     const plataforma = await findOwnedResource(PlataformaRegistro, id, user);
 
-    return plataforma; 
+    return plataforma;
   } catch (error) {
     console.error("Erro ao buscar plataforma por ID:", error);
     throw error;
@@ -62,7 +74,7 @@ async function obterPlataformaPorId(id, user) {
 
 async function obterPlataformasPaginadasPorUsuario(usuarioId, pagina = 1) {
   try {
-    const limit = 2; 
+    const limit = 2;
     const offset = (pagina - 1) * limit
     const plataformas = await PlataformaRegistro.findAll({
       where: { usuario_id: usuarioId },
@@ -121,7 +133,7 @@ async function deletarPlataforma(idUsuario, idExcluir) {
     const admin = await Usuario.findOne({ where: { id: idUsuario, tipo: "adm" } });
 
     if (admin) {
-      
+
       const plataforma = await PlataformaRegistro.findByPk(idExcluir);
       if (!plataforma) {
         const error = new Error("Plataforma não encontrada");
@@ -173,7 +185,7 @@ async function infoPaginacaoPlataformas() {
     const limit = 2;
     const totalRegistros = await PlataformaRegistro.count();
     const totalPaginas = Math.ceil(totalRegistros / limit);
-    
+
     return { totalPaginas, totalRegistros }
   } catch (error) {
     console.error('Erro ao buscar informações das plataformas', error)
@@ -181,11 +193,11 @@ async function infoPaginacaoPlataformas() {
   }
 }
 
-async function infoPlataformasPorUsuario(idUsuario){
+async function infoPlataformasPorUsuario(idUsuario) {
   try {
-    const limit = 2; 
+    const limit = 2;
     const totalRegistros = await PlataformaRegistro.count({
-      where: { usuario_id: idUsuario } 
+      where: { usuario_id: idUsuario }
     });
 
     const totalPaginas = Math.ceil(totalRegistros / limit);
@@ -196,6 +208,42 @@ async function infoPlataformasPorUsuario(idUsuario){
     throw new Error('Erro ao buscar informações das plataformas por usuário')
   }
 }
+
+
+async function registerPlataformaLTI(plataformaUrl, plataformaNome, idCliente) {
+  try {
+    if (!process.env.BACK_LTI) {
+      throw new Error('BACK_LTI não está definido');
+    }
+
+    const response = await fetch(`${process.env.BACK_LTI}/lti/register-platform`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': process.env.INTERNAL_API_KEY
+      },
+      body: JSON.stringify({
+        plataformaUrl,
+        plataformaNome,
+        idCliente
+      })
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.message || 'Erro ao registrar plataforma');
+    }
+
+    console.log('Sucesso:', data.message);
+    return data;
+
+  } catch (error) {
+    console.error('Erro ao registrar plataforma LTI:', error.message);
+    throw error;
+  }
+}
+
 
 module.exports = {
   criarPlataforma,
