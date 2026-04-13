@@ -30,7 +30,7 @@ async function criarPlataforma({
       customTerciaria: temaTipo === "customizado" ? customTerciaria : null,
       customQuartenaria: temaTipo === "customizado" ? customQuartenaria : null,
       customQuintenaria: temaTipo === "customizado" ? customQuintenaria : null,
-    },  { transaction });
+    }, { transaction });
 
     await registerPlataformaLTI(
       novaPlataforma.plataformaUrl,
@@ -140,8 +140,11 @@ async function deletarPlataforma(idUsuario, idExcluir) {
         error.status = 404;
         throw error;
       }
+      
+      await deletarPlataformaLTI(plataforma.plataformaUrl, plataforma.idCliente)
 
       await plataforma.destroy();
+
       return true;
 
     } else {
@@ -164,7 +167,10 @@ async function deletarPlataforma(idUsuario, idExcluir) {
         throw error;
       }
 
+      await deletarPlataformaLTI(plataforma.plataformaUrl, plataforma.idCliente)
+
       await plataforma.destroy();
+
       return true;
     }
 
@@ -212,10 +218,8 @@ async function infoPlataformasPorUsuario(idUsuario) {
 
 async function registerPlataformaLTI(plataformaUrl, plataformaNome, idCliente) {
   try {
-    if (!process.env.BACK_LTI) {
-      throw new Error('BACK_LTI não está definido');
-    }
-
+    if (!process.env.BACK_LTI) throw new Error('BACK_LTI não está definido');
+    
     const response = await fetch(`${process.env.BACK_LTI}/lti/register-platform`, {
       method: 'POST',
       headers: {
@@ -242,8 +246,41 @@ async function registerPlataformaLTI(plataformaUrl, plataformaNome, idCliente) {
     console.error('Erro ao registrar plataforma LTI:', error.message);
     throw error;
   }
+
 }
 
+
+async function deletarPlataformaLTI(plataformaUrl, idCliente) {
+  try {
+    if (!plataformaUrl || !idCliente) throw new Error('Parâmetros obrigatórios estão ausentes!');
+
+    const response = await fetch(
+      `${process.env.BACK_LTI}/lti/remove-platform`, {
+      method: 'DELETE',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': process.env.INTERNAL_API_KEY
+      },
+      body: JSON.stringify({
+        plataformaUrl,
+        idCliente
+      })
+    })
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.message || 'Erro ao deletar plataforma');
+    }
+
+    console.log('Sucesso:', data.message);
+    return data;
+
+  } catch (error) {
+    console.error('Erro ao deletar plataforma LTI:', error.message);
+    throw error;
+  }
+}
 
 module.exports = {
   criarPlataforma,
