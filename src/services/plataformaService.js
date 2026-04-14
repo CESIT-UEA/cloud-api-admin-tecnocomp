@@ -90,15 +90,30 @@ async function obterPlataformasPaginadasPorUsuario(usuarioId, pagina = 1) {
 }
 
 async function atualizarPlataforma(id, dadosAtualizados, user) {
+  let dadosAntigos;
   try {
-    const plataforma = await updateOwnedResource(
+    const plataforma = await findOwnedResource(
       PlataformaRegistro,
       id,
-      user,
-      dadosAtualizados
+      user
     );
 
-    if (!plataforma) return null;
+    if (!plataforma) {
+      const error = new Error("Plataforma não encontrada");
+      error.status = 404;
+      throw error;
+    }
+
+    dadosAntigos = {
+      plataformaUrl: plataforma.dataValues.plataformaUrl,
+      idCliente: plataforma.dataValues.idCliente
+    };
+
+     await atualizarPlataformaLTI({
+      plataformaUrl: dadosAntigos.plataformaUrl,
+      idCliente: dadosAntigos.idCliente,
+      novosDados: dadosAtualizados
+    });
 
     const {
       temaTipo,
@@ -112,6 +127,7 @@ async function atualizarPlataforma(id, dadosAtualizados, user) {
     const isCustom = temaTipo === "customizado";
 
     await plataforma.update({
+      ...dadosAtualizados,
       customPrimaria: isCustom ? customPrimaria : null,
       customSecundaria: isCustom ? customSecundaria : null,
       customTerciaria: isCustom ? customTerciaria : null,
@@ -281,6 +297,45 @@ async function deletarPlataformaLTI(plataformaUrl, idCliente) {
     throw error;
   }
 }
+
+
+async function atualizarPlataformaLTI({ plataformaUrl, idCliente, novosDados }) {
+  try {
+    if (!plataformaUrl || !idCliente || !novosDados) {
+      throw new Error("Parâmetros obrigatórios ausentes");
+    }
+
+    const response = await fetch(
+      `${process.env.BACK_LTI}/lti/update-platform`,
+      {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          "x-api-key": process.env.INTERNAL_API_KEY,
+        },
+        body: JSON.stringify({
+          plataformaUrl,
+          idCliente,
+          novosDados,
+        }),
+      }
+    );
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data?.message || "Erro ao atualizar plataforma");
+    }
+
+    console.log("Sucesso:", data.message);
+    return data;
+
+  } catch (error) {
+    console.error("Erro ao atualizar plataforma LTI:", error.message);
+    throw error;
+  }
+}
+
 
 module.exports = {
   criarPlataforma,
