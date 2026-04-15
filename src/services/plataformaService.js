@@ -1,4 +1,4 @@
-const { PlataformaRegistro, Usuario } = require("../models");
+const { PlataformaRegistro, Usuario, Aluno } = require("../models");
 const bcrypt = require("bcrypt");
 const usuarioService = require('../services/usuario')
 const { findOwnedResource, updateOwnedResource } = require("../helpers/ownership.helper");
@@ -156,10 +156,10 @@ async function deletarPlataforma(idUsuario, idExcluir) {
         error.status = 404;
         throw error;
       }
-      
-      await deletarPlataformaLTI(plataforma.plataformaUrl, plataforma.idCliente)
 
       await plataforma.destroy();
+      
+      await deletarPlataformaLTI(plataforma.plataformaUrl, plataforma.idCliente)
 
       return true;
 
