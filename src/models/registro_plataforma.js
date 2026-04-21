@@ -23,7 +23,7 @@ const PlataformaRegistro = sequelize.define(
     },
     usuario_id: {
       type: DataTypes.INTEGER,
-      allowNull: false,
+      allowNull: true,
       references: {
         model: "Usuarios",
         key: "id",
