@@ -13,6 +13,7 @@ const { montarUrlArquivo } = require('../utils/montarURL')
 const upload = require('../config/upload');
 const { validarConfirmacao } = require("../utils/validarConfirmacao");
 const { isYoutubeEmbed } = require('../utils/validarEmbedYt');
+const { enviarArquivoParaTreinamentoAgenteIA } = require("../services/treinamentoAgenteIA");
 
 /**
  * @swagger
@@ -98,6 +99,8 @@ router.post(
           usuario_id,
           filesDoModulo: req.pastaId
         });
+
+        await enviarArquivoParaTreinamentoAgenteIA(nome_modulo, req.file)
 
         res.status(201).json({ modulo });
 
