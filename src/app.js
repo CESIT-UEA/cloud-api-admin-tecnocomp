@@ -18,6 +18,7 @@ const alunoRoutes = require('./routes/aluno');
 const autoRegister = require('./routes/autoRegister')
 const forgotPassword = require('./routes/forgotPassword')
 const exercicioRoutes = require('./routes/exercicios')
+const agenteRoutes = require('./routes/agenteIA');
 
 const app = express();
 const swaggerUi = require('swagger-ui-express');
@@ -64,6 +65,7 @@ app.use('/api', autoRegister);
 app.use('/api', forgotPassword)
 app.use('/api', exercicioRoutes);
 app.use('/api', autoRegister);
+app.use('/api', agenteRoutes)
 
 
 

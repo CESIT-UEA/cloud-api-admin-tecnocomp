@@ -100,7 +100,8 @@ router.post(
           filesDoModulo: req.pastaId
         });
 
-        await enviarArquivoParaTreinamentoAgenteIA(nome_modulo, req.file)
+        console.log('MODULO ID', modulo.id)
+        await enviarArquivoParaTreinamentoAgenteIA(nome_modulo, modulo.id , req.file)
 
         res.status(201).json({ modulo });
 

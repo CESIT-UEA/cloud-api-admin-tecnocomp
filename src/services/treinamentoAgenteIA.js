@@ -1,7 +1,7 @@
 const { validarTipoArquivo } = require("../utils/validarTipoArquivo");
 const fs = require('fs');
 
-async function enviarArquivoParaTreinamentoAgenteIA(nomeModulo, file){
+async function enviarArquivoParaTreinamentoAgenteIA(nomeModulo, idModulo, file){
     try {
         const isValido = validarTipoArquivo(file, ['application/pdf']);
 
@@ -13,6 +13,7 @@ async function enviarArquivoParaTreinamentoAgenteIA(nomeModulo, file){
 
         formData.append('file', blob, file.originalname);
         formData.append('nomeModulo', nomeModulo)
+        formData.append('idModulo', idModulo)
 
         const resposta = await fetch(process.env.URL_N8N_UPLOAD_FILE, {
             method: 'POST',
