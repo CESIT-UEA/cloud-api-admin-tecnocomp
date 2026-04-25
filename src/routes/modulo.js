@@ -241,6 +241,22 @@ router.put(
           return res.status(400).json({ error: "Arquivo inválido" });
         }
 
+        // exclui arquivo de treinamento antigo
+        try {
+          await excluirArquivoDeTreinamentoAgente(moduloAtual.id);
+        } catch (error) {
+          console.warn("Falha ao excluir no n8n (ignorando)", error.message);
+        }
+
+        // envia novo arquivo de treinamento
+        const resposta = await enviarArquivoParaTreinamentoAgenteIA(
+          moduloAtual.nome_modulo,
+          moduloAtual.id,
+          req.file
+        )
+
+        if (!resposta) return res.status(400).json({ message: 'Erro ao atualizar arquivo de treinamento' })
+
         // armazena nome único da pasta
         const pastaId = moduloAtual.filesDoModulo;
 
@@ -271,20 +287,6 @@ router.put(
         }
 
         caminhoArquivo = novoCaminhoRelativo;
-
-        try {
-          await excluirArquivoDeTreinamentoAgente(moduloAtual.id);
-        } catch (error) {
-          console.warn("Falha ao excluir no n8n (ignorando)", error.message);
-        }
-
-        const resposta = await enviarArquivoParaTreinamentoAgenteIA(
-          moduloAtual.nome_modulo,
-          moduloAtual.id,
-          req.file
-        )
-
-        if (!resposta) return res.status(400).json({ message: 'Erro ao atualizar arquivo de treinamento' })
       }
 
       const moduloAtualizado = await moduloService.atualizarModulo(
