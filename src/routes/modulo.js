@@ -13,7 +13,7 @@ const { montarUrlArquivo } = require('../utils/montarURL')
 const upload = require('../config/upload');
 const { validarConfirmacao } = require("../utils/validarConfirmacao");
 const { isYoutubeEmbed } = require('../utils/validarEmbedYt');
-const { enviarArquivoParaTreinamentoAgenteIA } = require("../services/treinamentoAgenteIA");
+const { enviarArquivoParaTreinamentoAgenteIA, excluirArquivoDeTreinamentoAgente  } = require("../services/treinamentoAgenteIA");
 
 /**
  * @swagger
@@ -100,7 +100,6 @@ router.post(
           filesDoModulo: req.pastaId
         });
 
-        console.log('MODULO ID', modulo.id)
         await enviarArquivoParaTreinamentoAgenteIA(nome_modulo, modulo.id , req.file)
 
         res.status(201).json({ modulo });
@@ -272,6 +271,20 @@ router.put(
         }
 
         caminhoArquivo = novoCaminhoRelativo;
+
+        try {
+          await excluirArquivoDeTreinamentoAgente(moduloAtual.id);
+        } catch (error) {
+          console.warn("Falha ao excluir no n8n (ignorando)", error.message);
+        }
+
+        const resposta = await enviarArquivoParaTreinamentoAgenteIA(
+          moduloAtual.nome_modulo,
+          moduloAtual.id,
+          req.file
+        )
+
+        if (!resposta) return res.status(400).json({ message: 'Erro ao atualizar arquivo de treinamento' })
       }
 
       const moduloAtualizado = await moduloService.atualizarModulo(
@@ -354,6 +367,12 @@ router.delete(
 
       if (fs.existsSync(pastaPath)){
         fs.rmSync(pastaPath, { recursive: true, force: true})
+      }
+
+      try {
+        await excluirArquivoDeTreinamentoAgente(id);
+      } catch (error) {
+          console.warn("Falha ao excluir no n8n (ignorando)", error.message);
       }
     
 

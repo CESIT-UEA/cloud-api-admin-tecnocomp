@@ -17,9 +17,11 @@ async function enviarArquivoParaTreinamentoAgenteIA(nomeModulo, idModulo, file){
 
         const resposta = await fetch(process.env.URL_N8N_UPLOAD_FILE, {
             method: 'POST',
+            headers: { 
+                'x-api-key': process.env.INTERNAL_API_KEY
+            },
             body: formData,
         }).then(response => {
-            console.log(response)
             return response
         });
 
@@ -29,9 +31,36 @@ async function enviarArquivoParaTreinamentoAgenteIA(nomeModulo, idModulo, file){
 
     } catch (error) {
         console.error('Erro ao fazer envio de arquivo para treinamento do agente!', error)
+        throw error
     }
 }
 
+
+async function excluirArquivoDeTreinamentoAgente(idModulo){
+    try {
+        const resposta = await fetch(
+            process.env.URL_N8N_DELETE_FILE, {
+                method: 'DELETE',
+                headers: { 
+                    'Content-Type': 'application/json',
+                    'x-api-key': process.env.INTERNAL_API_KEY
+                },
+                body: JSON.stringify({ idModulo })   
+            }
+        )
+
+        if (!resposta.ok) throw new Error('Erro ao excluir arquivo de treinamento do Agente!')
+
+        return resposta.json();
+
+    } catch (error) {
+        console.error('Erro ao excluir arquivo de treinamento do Agente!', error);
+        throw error
+    }
+}
+
+
 module.exports = {
-    enviarArquivoParaTreinamentoAgenteIA
+    enviarArquivoParaTreinamentoAgenteIA,
+    excluirArquivoDeTreinamentoAgente
 }
