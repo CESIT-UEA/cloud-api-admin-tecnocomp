@@ -267,8 +267,15 @@ router.put(
           req.file.filename
         );
 
-        // move o arquivo para a pasta correta
-        fs.renameSync(req.file.path, destinoFinal)
+        console.log("req.file.path:", req.file.path);
+        console.log("existe origem?", fs.existsSync(req.file.path))
+
+        if(req.file.path){
+          // move o arquivo para a pasta correta
+          fs.renameSync(req.file.path, destinoFinal)
+        } else {
+          console.warn("Arquivo de origem não existe!")
+        }
 
         // remove pasta temporária criada pelo multer
         const pastaTemp = path.dirname(req.file.path);
