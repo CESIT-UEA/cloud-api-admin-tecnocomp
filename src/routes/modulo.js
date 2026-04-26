@@ -233,6 +233,7 @@ router.put(
       // caminho do arquivo antigo, mantém se não tiver novo arquivo
       let caminhoArquivo = moduloAtual.ebookUrlGeral;
 
+      let pastaId = moduloAtual.filesDoModulo;
 
       // se o arquivo existir
       if (req.file){
@@ -257,9 +258,6 @@ router.put(
         )
 
         if (!resposta) return res.status(400).json({ message: 'Erro ao atualizar arquivo de treinamento' })
-
-        // armazena nome único da pasta
-        let pastaId = moduloAtual.filesDoModulo;
 
         // se caminho da pasta não existir, gera um novo
         if (!pastaId) {
