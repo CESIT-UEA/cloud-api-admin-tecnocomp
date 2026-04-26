@@ -260,10 +260,15 @@ router.put(
         // armazena nome único da pasta
         const pastaId = moduloAtual.filesDoModulo;
 
+        const pastaDestino = path.join(process.env.FILE_PATH, pastaId);
+
+        // cria a pasta se não existir
+        fs.mkdirSync(pastaDestino, { recursive: true });
+
         // caminho em que a ficará o novo arquivo
         const destinoFinal = path.join(
           process.env.FILE_PATH,
-          pastaId,
+          pastaDestino,
           req.file.filename
         );
 
@@ -283,7 +288,7 @@ router.put(
           fs.rmSync(pastaTemp, { recursive: true, force: true });
         }
 
-        const novoCaminhoRelativo = path.join(pastaId, req.file.filename);
+        const novoCaminhoRelativo = path.join(pastaDestino, req.file.filename);
 
         if (moduloAtual.ebookUrlGeral){
           const caminhoAntigo = path.join(process.env.FILE_PATH, moduloAtual.ebookUrlGeral)
