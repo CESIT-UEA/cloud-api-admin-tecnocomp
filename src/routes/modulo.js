@@ -378,14 +378,15 @@ router.delete(
         return res.status(400).json({ error: 'Confirmação inválida'})
       }
 
-      const pastaPath = path.join(process.env.FILE_PATH, modulo.filesDoModulo);
+      if (modulo.filesDoModulo){
+        const pastaPath = path.join(process.env.FILE_PATH, modulo.filesDoModulo);
 
-      // await moduloService.deletarModulo(idAdm, senhaAdm, id);
-      await moduloService.deletarModulo(idUsuario, id)
-
-      if (fs.existsSync(pastaPath)){
-        fs.rmSync(pastaPath, { recursive: true, force: true})
+        if (fs.existsSync(pastaPath)){
+          fs.rmSync(pastaPath, { recursive: true, force: true})
+        }
       }
+
+      await moduloService.deletarModulo(idUsuario, id)
 
       try {
         await excluirArquivoDeTreinamentoAgente(id);
