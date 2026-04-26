@@ -310,7 +310,8 @@ router.put(
         id,
         {
           ...dadosAtualizados,
-          ebookUrlGeral: caminhoArquivo
+          ebookUrlGeral: caminhoArquivo,
+          filesDoModulo: pastaId
         },
         req.user
       );
