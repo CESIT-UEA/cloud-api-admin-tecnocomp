@@ -199,8 +199,7 @@ router.delete('/plataforma/:id', authMiddleware,authorizeRole(['adm','professor'
     if (!plataforma){
       return res.status(404).json({ error: "Plataforma não encontrada"})
     }
-    console.log('palavraConfirmacao', palavraConfirmacao)
-    console.log('palavraReal', plataforma.plataformaNome)
+    
     const isValido = validarConfirmacao(palavraConfirmacao, plataforma.plataformaNome)
 
     if (!isValido){

@@ -159,7 +159,11 @@ async function deletarPlataforma(idUsuario, idExcluir) {
 
       await plataforma.destroy();
       
-      await deletarPlataformaLTI(plataforma.plataformaUrl, plataforma.idCliente)
+      try {
+        await deletarPlataformaLTI(plataforma.plataformaUrl, plataforma.idCliente);
+      } catch (error) {
+        console.warn("Plataforma LTI não encontradoa ou já deletada:", error.message);
+      }
 
       return true;
 
@@ -183,9 +187,13 @@ async function deletarPlataforma(idUsuario, idExcluir) {
         throw error;
       }
 
-      await deletarPlataformaLTI(plataforma.plataformaUrl, plataforma.idCliente)
-
       await plataforma.destroy();
+
+      try {
+        await deletarPlataformaLTI(plataforma.plataformaUrl, plataforma.idCliente);
+      } catch (error) {
+        console.warn("Plataforma LTI não encontrada ou já deletada:", error.message);
+      }
 
       return true;
     }
