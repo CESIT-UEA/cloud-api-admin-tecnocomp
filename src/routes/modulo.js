@@ -14,6 +14,7 @@ const upload = require('../config/upload');
 const { validarConfirmacao } = require("../utils/validarConfirmacao");
 const { isYoutubeEmbed } = require('../utils/validarEmbedYt');
 const { enviarArquivoParaTreinamentoAgenteIA, excluirArquivoDeTreinamentoAgente  } = require("../services/treinamentoAgenteIA");
+const crypto = require('crypto')
 
 /**
  * @swagger
@@ -258,7 +259,12 @@ router.put(
         if (!resposta) return res.status(400).json({ message: 'Erro ao atualizar arquivo de treinamento' })
 
         // armazena nome único da pasta
-        const pastaId = moduloAtual.filesDoModulo;
+        let pastaId = moduloAtual.filesDoModulo;
+
+        // se caminho da pasta não existir, gera um novo
+        if (!pastaId) {
+          pastaId = crypto.randomUUID();
+        }
 
         const pastaDestino = path.join(process.env.FILE_PATH, pastaId);
 
