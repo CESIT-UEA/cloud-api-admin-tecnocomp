@@ -274,7 +274,7 @@ router.put(
         console.log("req.file.path:", req.file.path);
         console.log("existe origem?", fs.existsSync(req.file.path))
 
-        if(req.file.path){
+        if(fs.existsSync(req.file.path)){
           // move o arquivo para a pasta correta
           fs.renameSync(req.file.path, destinoFinal)
         } else {
@@ -287,7 +287,7 @@ router.put(
           fs.rmSync(pastaTemp, { recursive: true, force: true });
         }
 
-        const novoCaminhoRelativo = path.join(pastaDestino, req.file.filename);
+        const novoCaminhoRelativo = path.join(pastaId, req.file.filename);
 
         if (moduloAtual.ebookUrlGeral){
           const caminhoAntigo = path.join(process.env.FILE_PATH, moduloAtual.ebookUrlGeral)
