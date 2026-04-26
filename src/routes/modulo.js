@@ -267,7 +267,6 @@ router.put(
 
         // caminho em que a ficará o novo arquivo
         const destinoFinal = path.join(
-          process.env.FILE_PATH,
           pastaDestino,
           req.file.filename
         );
