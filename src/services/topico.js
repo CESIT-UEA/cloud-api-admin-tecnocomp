@@ -305,12 +305,12 @@ async function obterTopicoPorId(id, user) {
   }
 }
 
-async function clonarTopicoCompleto(topicoOriginal, idModuloNovo) {
+async function clonarTopicoCompleto(topicoOriginal, idModuloNovo, novoEbookUrl) {
   try {
     const novoTopico = await Topico.create({
       nome_topico: topicoOriginal.nome_topico,
       id_modulo: idModuloNovo,
-      ebookUrlGeral: topicoOriginal.ebookUrlGeral,
+      ebookUrlGeral: novoEbookUrl,
       textoApoio: topicoOriginal.textoApoio,
     });
 

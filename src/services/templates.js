@@ -80,7 +80,18 @@ async function clonarTemplate(id, usuarioId) {
     }
     
     for (const topico of topicosOriginais) {
-      await topicoService.clonarTopicoCompleto(topico, novoModulo.id);
+      let novoEbookUrl;
+
+      if (topico.ebookUrlGeral && fileClonado?.pastaId){
+        novoEbookUrl = await clonarArquivoTopico(
+          topico.ebookUrlGeral,
+          fileClonado.pastaId
+        )
+        console.log("novoEbookUrl:", novoEbookUrl);
+        console.log("tipo:", typeof novoEbookUrl);
+      }
+
+      await topicoService.clonarTopicoCompleto(topico, novoModulo.id, novoEbookUrl);
     }
 
     
@@ -158,6 +169,31 @@ async function clonarFileParaTemplate(template){
     }
 
 }
+
+async function clonarArquivoTopico(caminhoRelativoAntigo, novaPastaId){
+    if (!caminhoRelativoAntigo) return null;
+
+    const caminhoAntigo = path.join(process.env.FILE_PATH, caminhoRelativoAntigo);
+
+    if (!fs.existsSync(caminhoAntigo)){
+      console.warn('Arquivo do tópico não existe:', caminhoAntigo);
+      return null;
+    }
+
+    const nomeDoArquivo = path.basename(caminhoRelativoAntigo);
+
+    const novoCaminhoRelativo = path.join(novaPastaId, nomeDoArquivo);
+    const novoCaminhoAbsoluto = path.join(process.env.FILE_PATH, novoCaminhoRelativo);
+
+    // garante pasta
+    fs.mkdirSync(path.dirname(novoCaminhoAbsoluto), { recursive: true })
+
+    // copia
+    fs.copyFileSync(caminhoAntigo, novoCaminhoAbsoluto);
+
+    return novoCaminhoRelativo
+}
+
 
 module.exports = {
   listarTemplates,
