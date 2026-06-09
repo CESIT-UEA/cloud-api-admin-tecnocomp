@@ -28,7 +28,7 @@ cron.schedule('*/30 * * * *', async ()=>{
 
 // Inicializa o servidor e cria um administrador padrão se não existir
 const setup = async () => {
-
+  await sequelize.sync()
   const adminExists = await Usuario.findOne({ where: { tipo: 'adm' } });
   if (!adminExists) {
     const hashedPassword = await bcrypt.hash('admin123', 10); 
